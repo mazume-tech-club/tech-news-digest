@@ -13,6 +13,7 @@ on:
       - 'requirements.txt'
       - '.github/workflows/daily-news.yml'
       - 'render.py'
+      - 'assets/**'
 
 # gh-pages への push のみ許可(それ以外は読み取り専用)
 permissions:
@@ -30,18 +31,18 @@ jobs:
 
     steps:
       - name: Checkout main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # 既存アーカイブ一覧の生成用に gh-pages を取得(初回は存在しないので失敗を許容)
       - name: Checkout gh-pages (existing archive)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         continue-on-error: true
         with:
           ref: gh-pages
           path: _pages
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
           cache: 'pip'

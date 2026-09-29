@@ -14,6 +14,7 @@ JEV API(未設定時はキーワード)で重要度判定 → カテゴリ別・
 import html as HL
 import os
 import re
+import shutil
 import sys
 import calendar
 from concurrent.futures import ThreadPoolExecutor
@@ -26,7 +27,7 @@ import yaml
 from jev_client import score_items
 from render import build_html, build_archive_index
 
-UA = 'TechNewsDigest/3.0 (+https://github.com/mazume-tech-club/tech-news-digest)'
+UA = 'Mozilla/5.0 (compatible; TechNewsDigest/3.0; +https://github.com/mazume-tech-club/tech-news-digest)'
 JST = timezone(timedelta(hours=9))
 FEEDS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'feeds.yml')
 TRANSLATE = os.environ.get('TRANSLATE', '1') != '0'
@@ -170,6 +171,8 @@ def main():
     dated_dir = os.path.join(dist, now.strftime('%Y'), now.strftime('%m'))
     os.makedirs(dated_dir, exist_ok=True)
     os.makedirs(os.path.join(dist, 'archive'), exist_ok=True)
+    shutil.copyfile(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'favicon.svg'),
+                    os.path.join(dist, 'favicon.svg'))
 
     page = build_html(items, categories, settings, f'{pages_url}/archive/')
     for path in (os.path.join(dist, 'index.html'), os.path.join(dated_dir, f'{date_file}.html')):
