@@ -194,6 +194,12 @@ def main():
     if not items:
         sys.exit('記事を1件も取得できませんでした')
 
+    # mode: heat のカテゴリは、Jev を「重要度」ではなく「アツさ」で判定する
+    heat_cats = {c['id'] for c in categories if c.get('mode') == 'heat'}
+    for it in items:
+        if it['category'] in heat_cats:
+            it['profile'] = 'heat'
+
     print('\n[1.5/4] いいね数の取得')
     enrich_likes(items)
 

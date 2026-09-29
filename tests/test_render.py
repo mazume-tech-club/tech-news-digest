@@ -27,6 +27,19 @@ class LevelIndicator(unittest.TestCase):
         self.assertIn('Lv1', render.level_indicator({'importance': 0}))
 
 
+class HeatIndicator(unittest.TestCase):
+    def test_heat_label_and_tooltip(self):
+        html = render.level_indicator({'importance': 4, 'profile': 'heat', 'confidence': 0.8,
+                                       'breakdown': {'curiosity': 1.0, 'appeal': 0.5, 'learning': 0.0, 'noise': 0.1}})
+        self.assertIn('アツさ4', html)
+        self.assertIn('aria-label="アツさ 4(5段階)"', html)
+        self.assertIn('面白さ 100%', html)
+        self.assertNotIn('影響範囲', html)
+
+    def test_heat_fallback_tooltip(self):
+        self.assertIn('いいね数による簡易判定', render.level_indicator({'importance': 3, 'profile': 'heat'}))
+
+
 class Ranking(unittest.TestCase):
     def test_sorted_by_jev_score_not_bucket(self):
         t = datetime(2026, 9, 30, tzinfo=timezone.utc)

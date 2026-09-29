@@ -214,17 +214,23 @@ $('#tools').addEventListener('submit',function(e){e.preventDefault()});
 def level_indicator(it):
     """重要レベル(1〜5)を「Lv」+5段の棒で表示する。ホバーで Jev の内訳と確度を確認できる。"""
     lv = max(1, min(5, int(it.get('importance', 2))))
+    heat = it.get('profile') == 'heat'
+    name, short = ('アツさ', 'アツさ') if heat else ('重要レベル', 'Lv')
     bars = ''.join(f'<i class="{"on" if n <= lv else ""}"></i>' for n in range(1, 6))
     bd, conf = it.get('breakdown'), it.get('confidence')
-    if bd:
-        tip = (f'重要レベル {lv}/5 ・ 影響範囲 {bd["impact"]:.0%} / 緊急性 {bd["urgency"]:.0%} / '
+    if bd and heat:
+        tip = (f'{name} {lv}/5 ・ 面白さ {bd["curiosity"]:.0%} / 共感の広がり {bd["appeal"]:.0%} / '
+               f'学び {bd["learning"]:.0%} / 宣伝度 {bd["noise"]:.0%}')
+    elif bd:
+        tip = (f'{name} {lv}/5 ・ 影響範囲 {bd["impact"]:.0%} / 緊急性 {bd["urgency"]:.0%} / '
                f'新規性 {bd["novelty"]:.0%} / 宣伝度 {bd["noise"]:.0%}')
-        if conf is not None:
-            tip += f' ・ Jev 確度 {conf:.0%}'
     else:
-        tip = f'重要レベル {lv}/5(キーワードによる簡易判定)'
-    return (f'<span class="lv lv{lv}" role="img" aria-label="重要レベル {lv}(5段階)" title="{esc(tip)}">'
-            f'Lv{lv}<span class="bars" aria-hidden="true">{bars}</span></span>')
+        tip = f'{name} {lv}/5({"いいね数" if heat else "キーワード"}による簡易判定)'
+    if bd and conf is not None:
+        tip += f' ・ Jev 確度 {conf:.0%}'
+    label = f'{name} {lv}(5段階)'
+    return (f'<span class="lv lv{lv}" role="img" aria-label="{label}" title="{esc(tip)}">'
+            f'{short}{lv}<span class="bars" aria-hidden="true">{bars}</span></span>')
 
 
 HEART = ('<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">'
@@ -291,7 +297,11 @@ def _likes_key(it):
 def category_section(cat, items, show_n):
     by_likes = cat.get('sort') == 'likes'
     ranked = sorted(items, key=_likes_key if by_likes else _rank_key, reverse=True)
-    note = '<p class="cat-note">いいね数の多い順に表示しています。</p>' if by_likes else ''
+    note = ''
+    if by_likes:
+        note = ('<p class="cat-note">いいね数の多い順に表示しています。'
+                + ('「アツさ」は Jev が判定した、面白さ・共感の広がりです。' if cat.get('mode') == 'heat' else '')
+                + '</p>')
     head, rest = ranked[:show_n], ranked[show_n:]
     body = f'<ul class="list">{"".join(item_li(i) for i in head)}</ul>'
     if rest:
@@ -328,10 +338,11 @@ def build_html(items, categories, settings, archive_link):
     shown = [c for c in categories if by_cat.get(c['id'])]
     titles = {c['id']: c['title'] for c in categories}
 
-    n5 = sum(1 for i in items if i.get('importance') == 5)
-    n4 = sum(1 for i in items if i.get('importance') == 4)
+    news = [i for i in items if i.get('profile') != 'heat']  # 人気記事(アツさ)は重要度の集計・注目ニュースの対象外
+    n5 = sum(1 for i in news if i.get('importance') == 5)
+    n4 = sum(1 for i in news if i.get('importance') == 4)
 
-    picks = sorted([i for i in items if i.get('importance', 2) >= 4], key=_rank_key, reverse=True)[:PICKUP_N]
+    picks = sorted([i for i in news if i.get('importance', 2) >= 4], key=_rank_key, reverse=True)[:PICKUP_N]
     pickup = ''
     if picks:
         pickup = ('<section class="pickup" id="pickup" aria-labelledby="h-pickup"><h2 id="h-pickup">注目ニュース</h2>'
@@ -371,7 +382,7 @@ def build_html(items, categories, settings, archive_link):
   <footer class="site-footer">
     <p>収集元は <a href="https://github.com/mazume-tech-club/tech-news-digest/blob/main/feeds.yml">feeds.yml</a> で管理しています。
     追加したいフィードがあれば Pull Request をお送りください。</p>
-    <p>Lv は 1〜5 の重要レベル(5が最重要)で、Jev による判定です(利用できない場合はキーワード判定)。並び順は Jev のスコア順です。英語の見出しは自動翻訳で、原文を併記しています。</p>
+    <p>Lv は 1〜5 の重要レベル(5が最重要)で、Jev による判定です(利用できない場合はキーワード判定)。並び順は Jev のスコア順です(Qiita・Zenn の人気記事はいいね数順で、Jev は「アツさ」を判定します)。英語の見出しは自動翻訳で、原文を併記しています。</p>
   </footer>
 </div>"""
     icon = archive_link.rstrip('/').removesuffix('/archive') + '/favicon.svg'

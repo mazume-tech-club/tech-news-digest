@@ -17,7 +17,10 @@ settings:
   max_items_per_feed: 10
   show_per_category: 20     # カテゴリごとに最初から表示する件数(残りは折りたたみ)
 
-# 表示順 = この並び順(id と title のみ)
+# 表示順 = この並び順
+#   id, title(必須)
+#   sort: likes  … いいね数の多い順に表示する(省略時は Jev の重要度スコア順)
+#   mode: heat   … Jev を「重要度」ではなく「アツさ」(面白さ・共感の広がり)で判定し、「アツさ」と表示する
 categories:
   - { id: security, title: セキュリティ }
   - { id: ai,       title: AI・機械学習 }
@@ -25,8 +28,9 @@ categories:
   - { id: gcp,      title: Google Cloud }
   - { id: general,  title: 総合テックニュース }
   - { id: embedded, title: 組み込み・ラズパイ・電子工作 }
+  - { id: qiita,    title: Qiita 人気記事, sort: likes, mode: heat }
+  - { id: zenn,     title: Zenn 人気記事,  sort: likes, mode: heat }
   - { id: gadget,   title: PC・タブレット・ガジェット }
-  - { id: trend,    title: 面白技術・トレンド, sort: likes }   # sort: likes = いいね数の多い順
   - { id: corp,     title: 企業テックブログ }
   - { id: person,   title: 個人ブログ }
 
@@ -107,10 +111,10 @@ feeds:
   - { name: ギズモード・ジャパン,     url: "https://www.gizmodo.jp/index.xml",                         category: gadget }
   - { name: iPhone Mania,             url: "https://iphone-mania.jp/feed/",                            category: gadget }
 
-  # ── 面白技術・トレンド(Zenn・Qiita の話題記事。いいね数を取得して多い順に表示)──
-  #   likes: zenn / qiita を付けると、記事ごとのいいね数を各サイトのAPIから取得する
-  - { name: Zenn トレンド,            url: "https://zenn.dev/feed",                                    category: trend, max_items: 20, likes: zenn }
-  - { name: Qiita トレンド,           url: "https://qiita.com/popular-items/feed",                     category: trend, max_items: 20, likes: qiita }
+  # ── Qiita / Zenn 人気記事(いいね数を各サイトのAPIから取得し、多い順に表示)──
+  #   likes: zenn / qiita を付けると、記事ごとのいいね数を取得する
+  - { name: Qiita 人気記事,           url: "https://qiita.com/popular-items/feed",                     category: qiita, max_items: 20, likes: qiita }
+  - { name: Zenn 人気記事,            url: "https://zenn.dev/feed",                                    category: zenn,  max_items: 20, likes: zenn }
 
   # ── 企業テックブログ ────────────────────────────────────────────────
   - { name: メルカリ,                 url: "https://engineering.mercari.com/blog/feed.xml",            category: corp }

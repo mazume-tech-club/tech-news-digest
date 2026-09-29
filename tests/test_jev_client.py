@@ -114,5 +114,52 @@ class CallJev(unittest.TestCase):
             jc.call_jev(item(), 'k', session=session)
 
 
+def heat_answers(curiosity, learning, appeal, noise, conf=0.9):
+    return {
+        'curiosity': {'type': 'score', 'score': curiosity, 'confidence': conf},
+        'learning': {'type': 'score', 'score': learning, 'confidence': conf},
+        'appeal': {'type': 'score', 'score': appeal, 'confidence': conf},
+        'noise': {'type': 'noul', 'noul': noise},
+    }
+
+
+class HeatProfile(unittest.TestCase):
+    def test_compose_heat(self):
+        s, _, bd = jc.compose(heat_answers(3, 2, 3, 0.0), 'zenn', 'heat')
+        self.assertAlmostEqual(s, 1.0)
+        self.assertEqual(set(bd), {'curiosity', 'learning', 'appeal', 'noise'})
+        self.assertIsNone(jc.compose(answers(3, 3, 2, 0.0), 'zenn', 'heat'))  # 観点が違えば None
+
+    def test_heat_weights_sum_to_one(self):
+        self.assertAlmostEqual(sum(jc.HEAT_WEIGHTS.values()), 1.0)
+
+    def test_profile_selects_questions(self):
+        self.assertEqual(jc.profile_of({'profile': 'heat'}), 'heat')
+        self.assertEqual(jc.profile_of({}), 'importance')
+        self.assertIn('curiosity', jc.questions_for('heat'))
+        self.assertIn('impact', jc.questions_for('importance'))
+
+    def test_call_sends_heat_questions(self):
+        session = mock.Mock()
+        ok = mock.Mock(status_code=200, headers={})
+        ok.raise_for_status = lambda: None
+        ok.json = lambda: {'answers': {}}
+        session.post.return_value = ok
+        jc.call_jev(dict(item(category='zenn'), profile='heat'), 'k', session=session)
+        self.assertEqual(set(session.post.call_args.kwargs['json']['questions']),
+                         {'curiosity', 'learning', 'appeal', 'noise'})
+
+    def test_heat_item_scored_and_keyword_fallback_uses_likes(self):
+        it = dict(item(category='zenn'), profile='heat', likes=120)
+        with mock.patch.dict(os.environ, {'JEV_API_KEY': 'k'}),              mock.patch.object(jc, 'call_jev', return_value=heat_answers(3, 2, 3, 0.0)):
+            jc.score_items([it])
+        self.assertEqual(it['importance'], 5)
+        self.assertIn('curiosity', it['breakdown'])
+        fb = dict(item(url='u2', category='zenn'), profile='heat', likes=60)
+        with mock.patch.dict(os.environ, {'JEV_API_KEY': ''}):
+            jc.score_items([fb])
+        self.assertEqual((fb['scored_by'], fb['importance']), ('keyword', 4))
+
+
 if __name__ == '__main__':
     unittest.main()
