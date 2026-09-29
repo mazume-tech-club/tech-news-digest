@@ -2,15 +2,25 @@ name: 📡 Daily Tech News Digest
 
 on:
   schedule:
-    # 19:05 JST = 10:05 UTC  (Coworkタスクの5分後)
-    - cron: '0 20 * * *'
-  workflow_dispatch:   # GitHub UIから手動実行ボタン
+    - cron: '5 10 * * *'   # 19:05 JST = 10:05 UTC
+  workflow_dispatch:        # 手動実行
+  push:
+    branches: [main]        # feeds.yml やコードがマージされたら即反映
+    paths:
+      - 'feeds.yml'
+      - 'generate_news.py'
+      - 'jev_client.py'
+      - 'requirements.txt'
+      - '.github/workflows/daily-news.yml'
 
-# ── 最小権限の原則 ─────────────────────────────────────────────────────────────
-# gh-pages ブランチへの push のみ許可。それ以外は読み取りのみ。
+# gh-pages への push のみ許可(それ以外は読み取り専用)
 permissions:
-  contents: write    # gh-pages ブランチへの push に必要
-  pages: read        # GitHub Pages の設定確認のみ
+  contents: write
+
+# 同時実行を避ける(gh-pages への push 競合防止)
+concurrency:
+  group: deploy-pages
+  cancel-in-progress: false
 
 jobs:
   generate-and-deploy:
@@ -18,15 +28,18 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      # ── 1. メインブランチをチェックアウト ──────────────────────────────────
-      - name: Checkout main branch
+      - name: Checkout main
         uses: actions/checkout@v4
-        with:
-          # shallow clone で高速化（履歴不要）
-          fetch-depth: 1
 
-      # ── 2. Python セットアップ ─────────────────────────────────────────────
-      - name: Set up Python 3.11
+      # 既存アーカイブ一覧の生成用に gh-pages を取得(初回は存在しないので失敗を許容)
+      - name: Checkout gh-pages (existing archive)
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          ref: gh-pages
+          path: _pages
+
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -35,84 +48,42 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      # ── 3. ニュース生成 ────────────────────────────────────────────────────
-      # 注意: ここで渡す変数はリポジトリ名・オーナー名のみ（公開情報）
-      # シークレット類はこのステップでは一切使用しない
       - name: Generate news digest
         env:
           GH_OWNER:  ${{ github.repository_owner }}
           GH_REPO:   ${{ github.event.repository.name }}
           PAGES_URL: 'https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}'
+          # JEV API(Settings → Secrets and variables → Actions に登録)
+          JEV_API_URL: ${{ secrets.JEV_API_URL }}
+          JEV_API_KEY: ${{ secrets.JEV_API_KEY }}
         run: python generate_news.py
 
-      # ── 4. 生成ファイルの確認（セキュリティチェック）───────────────────────
-      # 万が一スクリプトにシークレットが混入していないかログで確認できるようにする
-      - name: Verify output (no secrets check)
+      - name: Verify output
         run: |
-          echo "=== Generated files ==="
+          test -s dist/index.html
           find dist -name "*.html" | sort
-          echo ""
-          echo "=== index.html size ==="
-          wc -c dist/index.html
-          # シークレット文字列がHTMLに含まれていないことを確認
-          if grep -r "NTFY_TOPIC\|ghp_\|github_pat_" dist/ 2>/dev/null; then
-            echo "❌ WARNING: Potential secret found in output!"
-            exit 1
+          if grep -rE "JEV_API_KEY|ghp_|github_pat_" dist/; then
+            echo "❌ Potential secret found in output"; exit 1
           fi
-          echo "✅ No secrets detected in output files"
 
-      # ── 5. gh-pages ブランチに既存ファイルを維持しながら deploy ──────────
-      # keep_files: true  → 過去のアーカイブ（YYYY/MM/YYYY-MM-DD.html）を保持
-      # enable_jekyll: false → Jekyllビルド無効（静的HTMLをそのまま配信）
-      - name: Deploy to GitHub Pages (keep archive)
+      - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir:  ./dist
+          publish_dir: ./dist
           publish_branch: gh-pages
-          keep_files:   true        # ← 重要: 過去のアーカイブを削除しない
-          enable_jekyll: false
-          commit_message: "📡 Daily digest ${{ github.run_number }} ($(date -u +'%Y-%m-%d'))"
+          keep_files: true       # 過去のアーカイブを削除しない
+          enable_jekyll: false   # .nojekyll を配置
+          commit_message: "📡 Digest #${{ github.run_number }}"
 
-      # ── 6. スマホ通知（ntfy.sh）────────────────────────────────────────────
-      # NTFY_TOPIC は GitHub Secrets に保存 → ログにも出力されない
-      # curl の -s フラグでレスポンスをサイレント化（トピック名がログに残らないよう注意）
-      - name: Send push notification
+      - name: Notify (ntfy.sh, optional)
         if: success()
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: |
-          if [ -z "$NTFY_TOPIC" ]; then
-            echo "NTFY_TOPIC not set, skipping notification"
-            exit 0
-          fi
-          PAGES_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
-          DATE_STR=$(TZ='Asia/Tokyo' date '+%Y年%m月%d日')
-          # ntfy.sh は curl の POST をサポート（トピック名はヘッダーで渡さずURLに含める）
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "Title: 📡 Tech News Digest 更新" \
-            -H "Priority: default" \
-            -H "Tags: newspaper" \
-            -H "Click: ${PAGES_URL}" \
-            -d "${DATE_STR}のテックニュースが届きました！タップして読む 🗞️" \
-            "https://ntfy.sh/${NTFY_TOPIC}")
-          if [ "$HTTP_STATUS" = "200" ]; then
-            echo "✅ Notification sent (HTTP $HTTP_STATUS)"
-          else
-            echo "⚠️  Notification may have failed (HTTP $HTTP_STATUS)"
-          fi
-
-      # ── 7. サマリー出力 ────────────────────────────────────────────────────
-      - name: Job summary
-        if: always()
-        run: |
-          PAGES_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
-          DATE_STR=$(TZ='Asia/Tokyo' date '+%Y-%m-%d %H:%M JST')
-          echo "## 📡 Tech News Digest — デプロイ結果" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| 項目 | 値 |" >> $GITHUB_STEP_SUMMARY
-          echo "|------|-----|" >> $GITHUB_STEP_SUMMARY
-          echo "| URL | [${PAGES_URL}](${PAGES_URL}) |" >> $GITHUB_STEP_SUMMARY
-          echo "| アーカイブ | [${PAGES_URL}/archive/](${PAGES_URL}/archive/) |" >> $GITHUB_STEP_SUMMARY
-          echo "| 実行時刻 | ${DATE_STR} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Run番号 | #${{ github.run_number }} |" >> $GITHUB_STEP_SUMMARY
+          [ -z "$NTFY_TOPIC" ] && { echo "NTFY_TOPIC not set, skip"; exit 0; }
+          curl -s -o /dev/null \
+            -H "Title: Tech News Digest" \
+            -H "Click: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}" \
+            -d "$(TZ=Asia/Tokyo date '+%Y/%m/%d') のテックニュースが更新されました" \
+            "https://ntfy.sh/${NTFY_TOPIC}"
