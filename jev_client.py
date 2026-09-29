@@ -78,7 +78,7 @@ WEIGHTS = {
     'default':  {'impact': 0.40, 'urgency': 0.35, 'novelty': 0.25},
     'security': {'impact': 0.30, 'urgency': 0.55, 'novelty': 0.15},
     'general':  {'impact': 0.45, 'urgency': 0.15, 'novelty': 0.40},
-    'fun':      {'impact': 0.45, 'urgency': 0.15, 'novelty': 0.40},
+    'trend':    {'impact': 0.55, 'urgency': 0.10, 'novelty': 0.35},
 }
 NOISE_PENALTY = 0.5          # noise=1.0 のとき合成スコアを半分にする
 

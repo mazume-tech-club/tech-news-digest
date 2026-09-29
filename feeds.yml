@@ -26,7 +26,7 @@ categories:
   - { id: general,  title: 総合テックニュース }
   - { id: embedded, title: 組み込み・ラズパイ・電子工作 }
   - { id: gadget,   title: PC・タブレット・ガジェット }
-  - { id: fun,      title: 面白技術・トレンド }
+  - { id: trend,    title: Zenn・Qiita トレンド }
   - { id: corp,     title: 企業テックブログ }
   - { id: person,   title: 個人ブログ }
 
@@ -107,9 +107,9 @@ feeds:
   - { name: ギズモード・ジャパン,     url: "https://www.gizmodo.jp/index.xml",                         category: gadget }
   - { name: iPhone Mania,             url: "https://iphone-mania.jp/feed/",                            category: gadget }
 
-  # ── 面白技術・トレンド ──────────────────────────────────────────────
-  - { name: Zenn トレンド,            url: "https://zenn.dev/feed",                                    category: fun }
-  - { name: Qiita 人気記事,           url: "https://qiita.com/popular-items/feed",                     category: fun }
+  # ── Zenn・Qiita トレンド(いま話題になっている記事)────────────────────
+  - { name: Zenn トレンド,            url: "https://zenn.dev/feed",                                    category: trend, max_items: 20 }
+  - { name: Qiita トレンド,           url: "https://qiita.com/popular-items/feed",                     category: trend, max_items: 20 }
 
   # ── 企業テックブログ ────────────────────────────────────────────────
   - { name: メルカリ,                 url: "https://engineering.mercari.com/blog/feed.xml",            category: corp }
