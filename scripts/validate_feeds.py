@@ -25,6 +25,8 @@ for i, feed in enumerate(cfg.get('feeds', []), 1):
             errors.append(f'{label}: 必須項目 {k} がありません')
     if feed.get('category') and feed['category'] not in cats:
         errors.append(f"{label}: category '{feed['category']}' は未定義 (使用可能: {', '.join(sorted(cats))})")
+    if feed.get('likes') not in (None, 'zenn', 'qiita'):
+        errors.append(f"{label}: likes は zenn か qiita")
     if feed.get('lang', 'ja') not in ('ja', 'en'):
         errors.append(f"{label}: lang は ja か en")
     url = feed.get('url', '')

@@ -22,7 +22,7 @@ import requests
 
 API_URL = os.environ.get('JEV_API_URL', '').strip() or 'https://api.typesafe.ai/v1/systemone'
 MODEL = os.environ.get('JEV_MODEL', '').strip() or 'jev-latest'
-CACHE_VERSION = 2           # 質問・重みを変えたら上げる(キャッシュが破棄される)
+CACHE_VERSION = 3          # 質問・重みを変えたら上げる(キャッシュが破棄される)
 MAX_WORKERS = 6              # 上限 1,200 req/分 に対して十分低い
 MAX_ATTEMPTS = 3
 TIMEOUT = 30
@@ -71,14 +71,65 @@ QUESTIONS = {
         },
     },
 }
-_MAX_LEVEL = {k: len(q['criteria']) - 1 for k, q in QUESTIONS.items() if q['type'] == 'score'}
+
+# ── 「アツさ」プロフィール(Zenn・Qiita の人気記事用) ──────────────────────────
+# 人気記事は「重要度」ではなく、技術的な面白さ・共感の広がり(アツさ)で見る。
+# 並び順はいいね数で決め、Jev のアツさは補助情報として表示する。
+HEAT_QUESTIONS = {
+    'curiosity': {
+        'type': 'score',
+        'instructions': 'この記事は、技術者にとってどれくらい「面白い・試したくなる」内容ですか?',
+        'criteria': [
+            '基本的な使い方や、よくある内容の解説',
+            '実用的なTipsや手順で、役に立つが意外性は少ない',
+            '工夫や発見が光る実践事例・検証',
+            '発想が新しく、思わず試したくなる実験的・意欲的な内容',
+        ],
+    },
+    'learning': {
+        'type': 'score',
+        'instructions': 'この記事を読むと、どれくらい新しい知識や視点が得られますか?',
+        'criteria': [
+            '既に知っている人が多い内容で、得られるものは少ない',
+            '具体的な手順や知見が得られる',
+            '仕組みや背景まで踏み込んでおり、理解が深まる',
+        ],
+    },
+    'appeal': {
+        'type': 'score',
+        'instructions': 'この記事は、どれくらい幅広い技術者の共感や興味を集めそうですか?',
+        'criteria': [
+            '特定の狭い領域の人にしか関係しない',
+            '特定の技術の利用者には響く',
+            '多くの開発者が関心を持つテーマ',
+            '職種や言語を問わず広く共感される話題',
+        ],
+    },
+    'noise': QUESTIONS['noise'],
+}
+HEAT_WEIGHTS = {'curiosity': 0.45, 'appeal': 0.30, 'learning': 0.25}
+
+
+def profile_of(item):
+    """'importance'(通常)か 'heat'(人気記事)。generate_news が item['profile'] に設定する。"""
+    return 'heat' if item.get('profile') == 'heat' else 'importance'
+
+
+def questions_for(profile):
+    return HEAT_QUESTIONS if profile == 'heat' else QUESTIONS
+
+
+def _max_levels(questions):
+    return {k: len(q['criteria']) - 1 for k, q in questions.items() if q['type'] == 'score'}
+
+
+_MAX_LEVEL = _max_levels(QUESTIONS)
 
 # カテゴリ別の重み(合計 1.0)。セキュリティは緊急性、総合/面白技術は新規性を重視。
 WEIGHTS = {
     'default':  {'impact': 0.40, 'urgency': 0.35, 'novelty': 0.25},
     'security': {'impact': 0.30, 'urgency': 0.55, 'novelty': 0.15},
     'general':  {'impact': 0.45, 'urgency': 0.15, 'novelty': 0.40},
-    'fun':      {'impact': 0.45, 'urgency': 0.15, 'novelty': 0.40},
 }
 NOISE_PENALTY = 0.5          # noise=1.0 のとき合成スコアを半分にする
 
@@ -102,6 +153,9 @@ _NOTABLE_KW = ['新機能', 'preview', 'プレビュー', 'ベータ', 'beta', '
 
 
 def keyword_level(item):
+    if profile_of(item) == 'heat':  # 人気記事はキーワードではなく、いいね数から簡易判定する
+        likes = item.get('likes') or 0
+        return 5 if likes >= 100 else 4 if likes >= 50 else 3 if likes >= 20 else 2
     text = f"{item.get('title', '')} {item.get('summary', '')}".lower()
     level = 2
     if any(k in text for k in _CRITICAL_KW):
@@ -124,18 +178,19 @@ def level_from_score(score):
     return 1
 
 
-def compose(answers, category):
+def compose(answers, category, profile='importance'):
     """Jev の answers から (合成スコア0-1, 平均confidence, 内訳) を返す。欠けていれば None。"""
+    heat = profile == 'heat'
     try:
         norm, confs = {}, []
-        for key, top in _MAX_LEVEL.items():
+        for key, top in (_max_levels(HEAT_QUESTIONS) if heat else _MAX_LEVEL).items():
             a = answers[key]
             norm[key] = max(0.0, min(1.0, float(a['score']) / top))
             confs.append(float(a.get('confidence', 1.0)))
         noise = max(0.0, min(1.0, float(answers['noise']['noul'])))
     except (KeyError, TypeError, ValueError):
         return None
-    w = WEIGHTS.get(category, WEIGHTS['default'])
+    w = HEAT_WEIGHTS if heat else WEIGHTS.get(category, WEIGHTS['default'])
     base = sum(w[k] * norm[k] for k in w)
     score = base * (1 - NOISE_PENALTY * noise)
     return score, sum(confs) / len(confs), {**norm, 'noise': noise}
@@ -158,7 +213,8 @@ class AuthError(Exception):
 
 def call_jev(item, key, session=requests):
     """1 記事を判定して answers を返す。429/529 は指数バックオフで再試行する。"""
-    payload = {'model': MODEL, 'state': build_state(item), 'questions': QUESTIONS}
+    payload = {'model': MODEL, 'state': build_state(item),
+               'questions': questions_for(profile_of(item))}
     headers = {'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'}
     for attempt in range(MAX_ATTEMPTS):
         resp = session.post(API_URL, json=payload, headers=headers, timeout=TIMEOUT)
@@ -241,7 +297,7 @@ def score_items(items, cache_in=None, cache_out=None):
             if auth_failed:
                 return it, None
             try:
-                return it, compose(call_jev(it, key), it.get('category'))
+                return it, compose(call_jev(it, key), it.get('category'), profile_of(it))
             except AuthError as e:
                 auth_failed.append(str(e))
             except Exception as e:  # キーやレスポンス本文は出力しない
