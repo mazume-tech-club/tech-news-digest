@@ -80,7 +80,7 @@ def fetch_feed(feed, settings):
             items.append({
                 'title': title, 'url': link, 'summary': _clean(e.get('summary') or e.get('description')),
                 'published': ts, 'source': feed['name'], 'category': feed['category'],
-                'lang': feed.get('lang', 'ja'),
+                'lang': feed.get('lang', 'ja'), 'likes_src': feed.get('likes'),
             })
         items.sort(key=lambda x: x['published'] or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
         return items[:limit], None
@@ -100,6 +100,44 @@ def fetch_all(feeds, settings):
                 seen.add(it['url'])
                 items.append(it)
     return items, report
+
+
+# ── Likes(いいね数) ──────────────────────────────────────────────────────────
+# RSS にはいいね数がないため、feeds.yml で `likes: zenn|qiita` を付けたフィードの記事だけ、
+# 各サイトの公開APIから取得する(失敗した記事は likes=None のまま)。
+
+_ZENN_RE = re.compile(r'https://zenn\.dev/[^/]+/articles/([^/?#]+)')
+_QIITA_RE = re.compile(r'https://qiita\.com/[^/]+/items/([0-9a-f]+)')
+
+
+def fetch_likes(item):
+    src, url = item.get('likes_src'), item['url']
+    try:
+        if src == 'zenn' and (m := _ZENN_RE.match(url)):
+            r = requests.get(f'https://zenn.dev/api/articles/{m.group(1)}', headers={'User-Agent': UA}, timeout=15)
+            r.raise_for_status()
+            return int(r.json()['article']['liked_count'])
+        if src == 'qiita' and (m := _QIITA_RE.match(url)):
+            headers = {'User-Agent': UA}
+            if os.environ.get('QIITA_TOKEN'):  # 任意。未設定でも取得できるが、レート制限が厳しい
+                headers['Authorization'] = f"Bearer {os.environ['QIITA_TOKEN']}"
+            r = requests.get(f'https://qiita.com/api/v2/items/{m.group(1)}', headers=headers, timeout=15)
+            r.raise_for_status()
+            return int(r.json()['likes_count'])
+    except Exception:
+        pass
+    return None
+
+
+def enrich_likes(items):
+    targets = [it for it in items if it.get('likes_src')]
+    if not targets:
+        return
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        for it, n in zip(targets, ex.map(fetch_likes, targets)):
+            it['likes'] = n
+    ok = sum(1 for it in targets if it.get('likes') is not None)
+    print(f'  → いいね数 {ok}/{len(targets)}件を取得')
 
 
 # ── Translate ─────────────────────────────────────────────────────────────────
@@ -155,6 +193,9 @@ def main():
     print(f'  → {len(items)}件 / 失敗フィード {len(failed)}件')
     if not items:
         sys.exit('記事を1件も取得できませんでした')
+
+    print('\n[1.5/4] いいね数の取得')
+    enrich_likes(items)
 
     print('\n[2/4] タイトル翻訳')
     translate_titles(items)

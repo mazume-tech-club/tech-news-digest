@@ -124,6 +124,11 @@ h2{font-size:1.25rem;line-height:1.4;margin:0}
 .item-desc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .hide-desc .item-desc{display:none}
 .item-meta{margin:6px 0 0;font-size:.875rem;color:var(--tx-mute);line-height:1.5;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center}
+.cat-note{margin:8px 0 0;font-size:.875rem;color:var(--tx-mute)}
+.likes{display:inline-flex;align-items:center;gap:4px;color:var(--tx-mute);font-size:.875rem}
+.likes svg{flex:none}
+.likes b{font-weight:700;color:var(--tx)}
+.likes.hot,.likes.hot b{color:var(--crit-bg)}
 .lv{display:inline-flex;align-items:center;gap:6px;margin-right:8px;font-size:.8125rem;font-weight:700;line-height:1;vertical-align:1px;letter-spacing:.04em;cursor:help}
 .lv .bars{display:inline-flex;align-items:flex-end;gap:2px;height:12px}
 .lv .bars i{display:block;width:3px;border-radius:1px;background:var(--line-strong);opacity:.4}
@@ -222,6 +227,19 @@ def level_indicator(it):
             f'Lv{lv}<span class="bars" aria-hidden="true">{bars}</span></span>')
 
 
+HEART = ('<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">'
+         '<path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>')
+
+
+def likes_chip(it):
+    """いいね数(Zenn / Qiita)。取得できなかった記事・対象外の記事は空文字。"""
+    n = it.get('likes')
+    if n is None:
+        return ''
+    hot = ' hot' if n >= 50 else ''
+    return f'<span class="likes{hot}" role="img" aria-label="いいね {n}件">{HEART}<b>{n:,}</b></span>'
+
+
 def item_li(it, show_cat=None):
     ja, en = it.get('title_ja') or it['title'], it['title']
     imp = it.get('importance', 2)
@@ -234,6 +252,7 @@ def item_li(it, show_cat=None):
     search_text = ' '.join([ja, en, it['source'], desc]).lower()
     meta = [f'<button type="button" class="src" data-src="{esc(it["source"])}" '
             f'title="このソースの記事だけ表示">{esc(it["source"])}</button>']
+    meta.insert(0, likes_chip(it))
     if show_cat:
         meta.append(f'<span>{esc(show_cat)}</span>')
     if time_html:
@@ -264,15 +283,22 @@ def _rank_key(it):
     return (it.get('importance_score', 0), it['published'] or EPOCH)
 
 
+def _likes_key(it):
+    n = it.get('likes')
+    return (-1 if n is None else n, it['published'] or EPOCH)
+
+
 def category_section(cat, items, show_n):
-    ranked = sorted(items, key=_rank_key, reverse=True)
+    by_likes = cat.get('sort') == 'likes'
+    ranked = sorted(items, key=_likes_key if by_likes else _rank_key, reverse=True)
+    note = '<p class="cat-note">いいね数の多い順に表示しています。</p>' if by_likes else ''
     head, rest = ranked[:show_n], ranked[show_n:]
     body = f'<ul class="list">{"".join(item_li(i) for i in head)}</ul>'
     if rest:
         body += (f'<details class="more"><summary>残り {len(rest)} 件を表示</summary>'
                  f'<ul class="list">{"".join(item_li(i) for i in rest)}</ul></details>')
     return (f'<section class="cat" id="{esc(cat["id"])}" aria-labelledby="h-{esc(cat["id"])}">'
-            f'<h2 id="h-{esc(cat["id"])}">{esc(cat["title"])}<span class="count">{len(items)}件</span></h2>{body}</section>')
+            f'<h2 id="h-{esc(cat["id"])}">{esc(cat["title"])}<span class="count">{len(items)}件</span></h2>{note}{body}</section>')
 
 
 def _page(title, body, script='', icon_href='favicon.svg'):
