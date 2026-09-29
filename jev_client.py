@@ -33,16 +33,16 @@ _CRITICAL_KW = [
     'ゼロデイ', '0-day', 'zero-day', 'zero day', '緊急', '悪用を確認', '悪用が確認',
     'actively exploited', 'リモートコード実行', 'remote code execution', 'ランサムウェア',
     'ransomware', 'サプライチェーン攻撃', 'supply chain attack', '大規模障害', '大規模な障害',
-    '情報漏えい', '情報漏洩', '不正アクセス', '個人情報', 'outage', 'incident',
+    '情報漏えい', '情報漏洩', '不正アクセス', 
 ]
 _HIGH_KW = [
-    '脆弱性', 'vulnerability', 'cve-', 'アップデート', 'セキュリティ更新', 'patch', '更新プログラム',
-    '重要', '注意喚起', '障害', '発表', 'リリース', '正式版', 'general availability',
-    '提供開始', '一般提供', 'gpt-', 'claude', 'gemini', 'llama', 'deprecat', '廃止', 'サービス終了',
+    '脆弱性', 'vulnerability', 'cve-', 'セキュリティ更新', 'patch', '更新プログラム',
+    '注意喚起', '障害', '正式版', 'general availability',
+    '一般提供', 'gpt-', 'claude', 'gemini', 'llama', 'deprecat', '廃止', 'サービス終了',
     'サポート終了', 'end of life', 'breaking change', '価格改定', '値上げ',
 ]
 _NOTABLE_KW = [
-    '新機能', 'preview', 'プレビュー', 'ベータ', 'beta', '対応', '登場', '公開', 'v\\d', '入門', '解説',
+    '新機能', 'preview', 'プレビュー', 'ベータ', 'beta', '登場', '公開', 'v\\d', '入門', '解説',
 ]
 
 

@@ -17,18 +17,18 @@ settings:
   max_items_per_feed: 10
   show_per_category: 20     # カテゴリごとに最初から表示する件数(残りは折りたたみ)
 
-# 表示順 = この並び順
+# 表示順 = この並び順(id と title のみ)
 categories:
-  - { id: security, title: セキュリティ,             icon: "🔐", color: "#f85149" }
-  - { id: ai,       title: AI・機械学習,             icon: "🤖", color: "#bc8cff" }
-  - { id: cloud,    title: インフラ・クラウド,       icon: "☁️", color: "#58a6ff" }
-  - { id: gcp,      title: Google Cloud,             icon: "🌩️", color: "#4285f4" }
-  - { id: general,  title: 総合テックニュース,       icon: "📰", color: "#8b949e" }
-  - { id: embedded, title: 組み込み・ラズパイ・電子工作, icon: "🔌", color: "#3fb950" }
-  - { id: gadget,   title: PC・タブレット・ガジェット, icon: "💻", color: "#f0883e" }
-  - { id: fun,      title: 面白技術・トレンド,       icon: "🎉", color: "#ff7b72" }
-  - { id: corp,     title: 企業テックブログ,         icon: "🏢", color: "#d2a8ff" }
-  - { id: person,   title: 個人ブログ,               icon: "✍️", color: "#79c0ff" }
+  - { id: security, title: セキュリティ }
+  - { id: ai,       title: AI・機械学習 }
+  - { id: cloud,    title: インフラ・クラウド }
+  - { id: gcp,      title: Google Cloud }
+  - { id: general,  title: 総合テックニュース }
+  - { id: embedded, title: 組み込み・ラズパイ・電子工作 }
+  - { id: gadget,   title: PC・タブレット・ガジェット }
+  - { id: fun,      title: 面白技術・トレンド }
+  - { id: corp,     title: 企業テックブログ }
+  - { id: person,   title: 個人ブログ }
 
 feeds:
   # ── 総合テックニュース ──────────────────────────────────────────────

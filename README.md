@@ -22,7 +22,8 @@ PR では `feeds.yml` の自動検証(形式・重複・URL到達性)が走り�
 
 ```
 feeds.yml                       収集するRSS/カテゴリ/設定(ここを編集)
-generate_news.py                収集 → 翻訳 → 重要度判定 → HTML生成
+generate_news.py                収集 → 翻訳 → 重要度判定 → 出力
+render.py                       閲覧UI(HTML/CSS/JS)。DADS参考・ダークモード・絞り込み
 jev_client.py                   JEV API クライアント + キーワード判定フォールバック
 scripts/validate_feeds.py       feeds.yml の検証(PR時)
 .github/workflows/
