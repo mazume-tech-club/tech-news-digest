@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" href="https://mazume-tech-club.github.io/tech-news-digest/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>過去のニュース — Tech News Digest</title>
@@ -104,6 +105,13 @@ h2{font-size:1.25rem;line-height:1.4;margin:0}
 .b5{background:var(--crit-bg);color:var(--crit-tx);border-color:var(--crit-bg)}
 .b4{color:var(--high);border-color:var(--high-line);background:transparent}
 .b3{color:var(--note);border-color:var(--line-strong);background:transparent}
+.conf{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.batt{position:relative;display:inline-block;width:28px;height:12px;border:1.5px solid var(--tx-mute);border-radius:3px;padding:1px}
+.batt::after{content:"";position:absolute;right:-4.5px;top:2.5px;width:3px;height:4px;background:var(--tx-mute);border-radius:0 2px 2px 0}
+.batt i{display:block;height:100%;background:var(--tx-mute);border-radius:1px}
+.conf.low .batt i{background:var(--high-line)}
+.conf.low .pct{color:var(--high)}
+.conf-none{font-size:.8125rem}
 .item[data-imp="5"]{border-left:4px solid var(--crit-bg);padding-left:12px}
 .item[data-imp="4"]{border-left:4px solid var(--high-line);padding-left:12px}
 
@@ -129,10 +137,10 @@ details.more summary{cursor:pointer;min-height:44px;display:flex;align-items:cen
 <body>
 <a class="skip" href="#main">本文へ移動</a>
 <header class="site-header"><div class="wrap">
-  <div><h1 class="site-title">Tech News Digest</h1><p class="lead">過去のニュース（全1日分）</p></div>
+  <div><h1 class="site-title">Tech News Digest</h1><p class="lead">過去のニュース（全2日分）</p></div>
   <div class="header-tools"><a class="btn" href="https://mazume-tech-club.github.io/tech-news-digest/">最新のニュースへ</a></div>
 </div></header>
-<div class="wrap"><main id="main"><section class="arch-month"><h2>2026年9月</h2><ul class="list arch-list"><li class="item"><a href="https://mazume-tech-club.github.io/tech-news-digest/2026/09/2026-09-29.html">2026年9月29日</a></li></ul></section></main></div>
+<div class="wrap"><main id="main"><section class="arch-month"><h2>2026年9月</h2><ul class="list arch-list"><li class="item"><a href="https://mazume-tech-club.github.io/tech-news-digest/2026/09/2026-09-30.html">2026年9月30日</a></li><li class="item"><a href="https://mazume-tech-club.github.io/tech-news-digest/2026/09/2026-09-29.html">2026年9月29日</a></li></ul></section></main></div>
 
 </body>
 </html>
