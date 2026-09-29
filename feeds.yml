@@ -1,0 +1,129 @@
+# 収集対象RSS/Atomフィードの一覧
+#
+# 記事(フィード)を追加したい場合は、このファイルに1件追記してPull Requestを出してください。
+# マージされると、次回(または main への push 時)のGitHub Actionsで自動的にサイトへ反映されます。
+# 詳しくは CONTRIBUTING.md を参照。
+#
+# フィード1件のフィールド:
+#   name      : 表示名(必須)
+#   url       : RSS/Atom/RDF の URL(必須・https 推奨)
+#   category  : 下の categories の id のどれか(必須)
+#   lang      : ja または en(省略時 ja)。en は日本語タイトルに自動翻訳される
+#   enabled   : false にすると収集しない(省略時 true)
+#   max_items : このフィードから取り込む最大件数(省略時 settings.max_items_per_feed)
+
+settings:
+  lookback_hours: 168       # この時間より古い記事は除外(日付なしは含める)
+  max_items_per_feed: 10
+  show_per_category: 20     # カテゴリごとに最初から表示する件数(残りは折りたたみ)
+
+# 表示順 = この並び順(id と title のみ)
+categories:
+  - { id: security, title: セキュリティ }
+  - { id: ai,       title: AI・機械学習 }
+  - { id: cloud,    title: インフラ・クラウド }
+  - { id: gcp,      title: Google Cloud }
+  - { id: general,  title: 総合テックニュース }
+  - { id: embedded, title: 組み込み・ラズパイ・電子工作 }
+  - { id: gadget,   title: PC・タブレット・ガジェット }
+  - { id: fun,      title: 面白技術・トレンド }
+  - { id: corp,     title: 企業テックブログ }
+  - { id: person,   title: 個人ブログ }
+
+feeds:
+  # ── 総合テックニュース ──────────────────────────────────────────────
+  - { name: Publickey,                url: "https://www.publickey1.jp/atom.xml",                       category: general }
+  - { name: GIGAZINE,                 url: "https://gigazine.net/news/rss_2.0/",                       category: general }
+  - { name: ITmedia NEWS,             url: "https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml",        category: general }
+  - { name: "@IT",                    url: "https://rss.itmedia.co.jp/rss/2.0/ait.xml",                category: general }
+  - { name: ITmedia エンタープライズ, url: "https://rss.itmedia.co.jp/rss/2.0/enterprise.xml",         category: general }
+  - { name: ASCII.jp,                 url: "https://ascii.jp/rss.xml",                                 category: general }
+  - { name: Impress Watch,            url: "https://www.watch.impress.co.jp/data/rss/1.0/ipw/feed.rdf", category: general }
+  - { name: はてなブックマーク(IT人気), url: "https://b.hatena.ne.jp/hotentry/it.rss",                 category: general }
+  - { name: はてなブックマーク(IT新着), url: "https://b.hatena.ne.jp/entrylist/it.rss",                category: general }
+
+  # ── セキュリティ ────────────────────────────────────────────────────
+  - { name: JPCERT/CC,                url: "https://www.jpcert.or.jp/rss/jpcert.rdf",                  category: security }
+  - { name: JVN,                      url: "https://jvn.jp/rss/jvn.rdf",                               category: security }
+  - { name: JVN iPedia,               url: "https://jvndb.jvn.jp/ja/rss/jvndb.rdf",                    category: security }
+  - { name: IPA 重要なセキュリティ情報, url: "https://www.ipa.go.jp/security/rss/alert.rdf",           category: security }
+  - { name: IPA セキュリティ情報,     url: "https://www.ipa.go.jp/security/rss/info.rdf",              category: security, enabled: false }  # URL要確認(2026-09時点で取得不可)
+  - { name: Security NEXT,            url: "https://www.security-next.com/feed",                       category: security }
+  - { name: ScanNetSecurity,          url: "https://scan.netsecurity.ne.jp/rss/index.rdf",             category: security }
+  - { name: piyolog,                  url: "https://piyolog.hatenadiary.jp/feed",                      category: security }
+
+  # ── AI ──────────────────────────────────────────────────────────────
+  - { name: ITmedia AI+,              url: "https://rss.itmedia.co.jp/rss/2.0/aiplus.xml",             category: ai }
+  - { name: Zenn(LLM),                url: "https://zenn.dev/topics/llm/feed",                         category: ai }
+  - { name: Zenn(ChatGPT),            url: "https://zenn.dev/topics/chatgpt/feed",                     category: ai }
+  - { name: Zenn(Claude Code),        url: "https://zenn.dev/topics/claudecode/feed",                  category: ai }
+  - { name: Qiita(LLM),               url: "https://qiita.com/tags/llm/feed",                          category: ai }
+  - { name: Qiita(生成AI),            url: "https://qiita.com/tags/%E7%94%9F%E6%88%90ai/feed",         category: ai }
+  - { name: Google Developers Japan,  url: "https://developers-jp.googleblog.com/atom.xml",            category: ai }
+  - { name: OpenAI News,              url: "https://openai.com/news/rss.xml",                          category: ai, lang: en }
+  - { name: Hugging Face Blog,        url: "https://huggingface.co/blog/feed.xml",                     category: ai, lang: en }
+  # Anthropic は公式RSSがないためコミュニティ製フィードが必要(URL確定後に追記してください)
+
+  # ── インフラ・クラウド ──────────────────────────────────────────────
+  - { name: AWS 日本語ブログ,         url: "https://aws.amazon.com/jp/blogs/news/feed/",               category: cloud }
+  - { name: AWS What's New,           url: "https://aws.amazon.com/jp/about-aws/whats-new/recent/feed/", category: cloud }
+  - { name: Azure Updates,            url: "https://azure.microsoft.com/ja-jp/updates/feed/",          category: cloud }
+  - { name: クラウドWatch,            url: "https://cloud.watch.impress.co.jp/data/rss/1.0/clw/feed.rdf", category: cloud }
+  - { name: DevelopersIO,             url: "https://dev.classmethod.jp/feed/",                         category: cloud }
+  - { name: さくらのナレッジ,         url: "https://knowledge.sakura.ad.jp/rss/",                      category: cloud }
+  - { name: Zenn(AWS),                url: "https://zenn.dev/topics/aws/feed",                         category: cloud }
+  - { name: Zenn(Kubernetes),         url: "https://zenn.dev/topics/kubernetes/feed",                  category: cloud }
+  - { name: Zenn(Terraform),          url: "https://zenn.dev/topics/terraform/feed",                   category: cloud }
+
+  # ── Google Cloud ────────────────────────────────────────────────────
+  - { name: Google Cloud リリースノート, url: "https://cloud.google.com/feeds/gcp-release-notes.xml",  category: gcp, lang: en }
+  - { name: Google Cloud Blog,        url: "https://cloudblog.withgoogle.com/rss/",                    category: gcp, lang: en }
+  - { name: Google Cloud 障害情報,    url: "https://status.cloud.google.com/en/feed.atom",             category: gcp, lang: en }
+  - { name: Cloud Run リリースノート, url: "https://cloud.google.com/feeds/cloud-run-release-notes.xml", category: gcp, lang: en }
+  - { name: GKE リリースノート,       url: "https://cloud.google.com/feeds/gke-release-notes.xml",     category: gcp, lang: en }
+  - { name: BigQuery リリースノート,  url: "https://cloud.google.com/feeds/bigquery-release-notes.xml", category: gcp, lang: en }
+  - { name: Vertex AI リリースノート, url: "https://cloud.google.com/feeds/vertex-ai-release-notes.xml", category: gcp, lang: en }
+  - { name: Zenn(Google Cloud),       url: "https://zenn.dev/topics/googlecloud/feed",                 category: gcp }
+  - { name: Zenn(GCP),                url: "https://zenn.dev/topics/gcp/feed",                         category: gcp }
+  - { name: Qiita(GoogleCloud),       url: "https://qiita.com/tags/googlecloud/feed",                  category: gcp }
+  - { name: Qiita(GCP),               url: "https://qiita.com/tags/gcp/feed",                          category: gcp, enabled: false }  # URL要確認(2026-09時点で取得不可)
+
+  # ── 組み込み・ラズパイ・電子工作 ────────────────────────────────────
+  - { name: Raspberry Pi 公式,        url: "https://www.raspberrypi.com/news/feed/",                   category: embedded, lang: en }
+  - { name: Zenn(Raspberry Pi),       url: "https://zenn.dev/topics/raspberrypi/feed",                 category: embedded }
+  - { name: Zenn(ESP32),              url: "https://zenn.dev/topics/esp32/feed",                       category: embedded }
+  - { name: Qiita(RaspberryPi),       url: "https://qiita.com/tags/raspberrypi/feed",                  category: embedded }
+  - { name: Qiita(Arduino),           url: "https://qiita.com/tags/arduino/feed",                      category: embedded }
+  - { name: 窓の杜,                   url: "https://forest.watch.impress.co.jp/data/rss/1.0/wf/feed.rdf", category: embedded }
+  - { name: スイッチサイエンス マガジン, url: "https://mag.switch-science.com/feed/",                  category: embedded }
+  - { name: Hackaday,                 url: "https://hackaday.com/blog/feed/",                          category: embedded, lang: en }
+
+  # ── PC・タブレット・ガジェット ──────────────────────────────────────
+  - { name: PC Watch,                 url: "https://pc.watch.impress.co.jp/data/rss/1.0/pcw/feed.rdf", category: gadget }
+  - { name: AKIBA PC Hotline!,        url: "https://akiba-pc.watch.impress.co.jp/data/rss/1.0/ah/feed.rdf", category: gadget }
+  - { name: ITmedia PC USER,          url: "https://rss.itmedia.co.jp/rss/2.0/pcuser.xml",             category: gadget }
+  - { name: ITmedia Mobile,           url: "https://rss.itmedia.co.jp/rss/2.0/mobile.xml",             category: gadget }
+  - { name: Engadget 日本版,          url: "https://japanese.engadget.com/rss.xml",                    category: gadget, enabled: false }  # URL要確認(2026-09時点で取得不可)
+  - { name: ギズモード・ジャパン,     url: "https://www.gizmodo.jp/index.xml",                         category: gadget }
+  - { name: iPhone Mania,             url: "https://iphone-mania.jp/feed/",                            category: gadget }
+
+  # ── 面白技術・トレンド ──────────────────────────────────────────────
+  - { name: Zenn トレンド,            url: "https://zenn.dev/feed",                                    category: fun }
+  - { name: Qiita 人気記事,           url: "https://qiita.com/popular-items/feed",                     category: fun }
+
+  # ── 企業テックブログ ────────────────────────────────────────────────
+  - { name: メルカリ,                 url: "https://engineering.mercari.com/blog/feed.xml",            category: corp }
+  - { name: サイボウズ,               url: "https://blog.cybozu.io/feed",                              category: corp }
+  - { name: Yahoo! JAPAN,             url: "https://techblog.yahoo.co.jp/atom.xml",                    category: corp }
+  - { name: CyberAgent,               url: "https://developers.cyberagent.co.jp/blog/feed/",           category: corp }
+  - { name: DeNA,                     url: "https://engineering.dena.com/blog/index.xml",              category: corp }
+  - { name: freee,                    url: "https://developers.freee.co.jp/feed",                      category: corp }
+  - { name: Sansan,                   url: "https://buildersbox.corp-sansan.com/feed",                 category: corp }
+  - { name: Money Forward,            url: "https://moneyforward-dev.jp/feed",                         category: corp }
+  - { name: ラクス,                   url: "https://tech-blog.rakus.co.jp/feed",                       category: corp }
+
+  # ── 個人ブログ ──────────────────────────────────────────────────────
+  - { name: Jxck,                     url: "https://blog.jxck.io/feed.atom",                           category: person, enabled: false }  # URL要確認(2026-09時点で取得不可)
+  - { name: Nishio Hirokazu,          url: "https://nishio.hateblo.jp/rss",                            category: person }
+  - { name: kazuho,                   url: "https://blog.kazuhooku.com/feeds/posts/default",           category: person }
+  - { name: Simon Willison,           url: "https://simonwillison.net/atom/everything/",               category: person, lang: en }

@@ -1,126 +1,58 @@
 # 📡 Tech News Digest
 
-毎日19時（JST）に自動収集・日本語翻訳されるテックニュースのダイジェストサイトです。
-GitHub Actions で生成され、GitHub Pages で公開されます。
+日本語テックサイトのRSSを毎日収集し、**Jev(TypeSafe AI)で重要度を判定**して、カテゴリ別・重要度順に表示する静的サイトです。
+GitHub Actions で生成し、GitHub Pages(`gh-pages` ブランチ)で公開します。
 
-**→ [最新のニュースを見る](https://M-Yanagishawa.github.io/tech-news-digest/)**
-**→ [アーカイブ一覧](https://M-Yanagishawa.github.io/tech-news-digest/archive/)**
-
----
+**→ https://mazume-tech-club.github.io/tech-news-digest/**
 
 ## 特徴
 
-- 🌐 **多ソース収集** — Hacker News・Reddit・Zenn・セキュリティRSSを一括取得
-- 🤖 **日本語翻訳** — 英語タイトルを自動で日本語に翻訳（原文も表示）
-- 📂 **アーカイブ** — 日付別（`YYYY/MM/YYYY-MM-DD.html`）で過去分を永続保存
-- 📱 **モバイル対応** — スマホで快適に読めるダークテーマUI
-- 🔔 **プッシュ通知** — 更新時に [ntfy.sh](https://ntfy.sh/) でスマホに通知
+- 📥 **RSSのみ収集** — 日本語サイトが中心。英語フィードは日本語タイトルに自動翻訳(原文も併記)
+- 🎯 **重要度ランキング** — 記事ごとに Jev で「影響範囲・緊急性・新規性・宣伝度」を判定して合成し、重要度(最重要 / 重要 / 注目)の高い順にカテゴリ別で表示
+- 🛟 **フォールバック** — Jev 未設定・障害・低確信度のときはキーワード判定で動作
+- 📂 **アーカイブ** — `YYYY/MM/YYYY-MM-DD.html` として日別に保存
+- 🤝 **コントリビューション** — `feeds.yml` を編集する Pull Request をマージするだけで収集対象を追加可能
 
----
+## 収集対象の追加(コントリビューター向け)
 
-## ニュースソース
+[`feeds.yml`](./feeds.yml) に1行追加して PR を出してください。手順は [CONTRIBUTING.md](./CONTRIBUTING.md) を参照。
+PR では `feeds.yml` の自動検証(形式・重複・URL到達性)が走り、`main` にマージされると自動でサイトが再生成されます。
 
-| ソース | カテゴリ |
-|--------|----------|
-| [Hacker News](https://news.ycombinator.com/) | セキュリティ・AI・クラウド・フロントエンド・その他 |
-| [Reddit r/webdev](https://reddit.com/r/webdev) | Web開発・フロントエンド |
-| [Reddit r/programming](https://reddit.com/r/programming) | プログラミング全般 |
-| [Zenn](https://zenn.dev/) | 日本語技術記事トレンド |
-| [Krebs on Security](https://krebsonsecurity.com/) | セキュリティインシデント |
-| [Bleeping Computer](https://www.bleepingcomputer.com/) | セキュリティインシデント |
-| [CISA Advisories](https://www.cisa.gov/cybersecurity-advisories) | 公式セキュリティ警告 |
-
----
-
-## サイト構成
+## 構成
 
 ```
-https://USERNAME.github.io/tech-news-digest/
-│
-├── index.html          最新のニュース（毎日更新）
-├── archive/
-│   └── index.html      過去のアーカイブ一覧
-└── YYYY/
-    └── MM/
-        └── YYYY-MM-DD.html   日付別アーカイブ（永続保存）
+feeds.yml                       収集するRSS/カテゴリ/設定(ここを編集)
+generate_news.py                収集 → 翻訳 → 重要度判定 → 出力
+render.py                       閲覧UI(HTML/CSS/JS)。DADS参考・ダークモード・絞り込み
+jev_client.py                   Jev API クライアント・合成スコア・キャッシュ・フォールバック
+docs/jev-design.md              Jev 連携の設計
+tests/                          単体テスト
+scripts/validate_feeds.py       feeds.yml の検証(PR時)
+.github/workflows/
+  daily-news.yml                毎日19:05 JST / main への反映時 / 手動 → gh-pages へデプロイ
+  validate-feeds.yml            PR で feeds.yml を検証
 ```
 
----
+## セットアップ(管理者向け)
 
-## リポジトリ構成
+1. **Settings → Pages** → Source: `Deploy from a branch` / Branch: `gh-pages` `/ (root)`
+   (`gh-pages` ブランチは初回の Actions 実行で自動作成されます。先に **Actions → Daily Tech News Digest → Run workflow** を実行してください)
+2. **Settings → Secrets and variables → Actions** に登録
+   - `JEV_API_KEY` — Jev API キー([typesafe.ai](https://typesafe.ai) で発行)
+   - `NTFY_TOPIC` — (任意) [ntfy.sh](https://ntfy.sh/) 通知用トピック
+3. **Settings → Actions → General → Workflow permissions** を `Read and write permissions` にする
+4. (推奨) **Settings → Branches** で `main` を保護し、PR + レビュー必須にする
 
-```
-tech-news-digest/
-├── .github/
-│   └── workflows/
-│       └── daily-news.yml    GitHub Actions ワークフロー（毎日19:05 JST）
-├── generate_news.py           ニュース収集・翻訳・HTML生成スクリプト
-├── requirements.txt           Python依存パッケージ
-└── SETUP_GUIDE.md             詳細セットアップ手順
-```
+## Jev 連携について
 
----
-
-## セットアップ
-
-セットアップ手順の詳細は **[SETUP_GUIDE.md](./SETUP_GUIDE.md)** を参照してください。
-
-大まかな流れは以下の通りです：
-
-1. このリポジトリを **Fork** またはテンプレートとして使用
-2. **Settings → Pages** で Source を `gh-pages` ブランチに設定
-3. **Settings → Secrets** に `NTFY_TOPIC` を登録（通知用トピック名）
-4. **Actions** タブから手動実行して動作確認
-
----
-
-## 動作の仕組み
-
-```
-毎日 19:05 JST
-      │
-      ▼
-GitHub Actions 起動
-      │
-      ├─ Hacker News API でトップ記事取得
-      ├─ Reddit API でホット投稿取得
-      ├─ Zenn API でトレンド記事取得
-      └─ セキュリティRSSフィード取得
-            │
-            ▼
-      deep-translator で英語タイトルを日本語翻訳
-            │
-            ▼
-      HTML生成（ダークテーマ・モバイル対応）
-      │
-      ├─ dist/index.html（最新・毎日上書き）
-      └─ dist/YYYY/MM/YYYY-MM-DD.html（アーカイブ）
-            │
-            ▼
-      gh-pages ブランチにデプロイ（keep_files で過去分保持）
-            │
-            ▼
-      ntfy.sh でスマホにプッシュ通知
-```
-
----
+記事 1 件ごとに Jev API を 1 回呼び、複数の観点(影響範囲・緊急性・新規性・宣伝度)を並列に判定して、コードで重み付き合成します。
+設計・質問定義・閾値・コストは [docs/jev-design.md](./docs/jev-design.md) を参照してください。
 
 ## ローカル実行
 
 ```bash
-# 依存パッケージのインストール
 pip install -r requirements.txt
-
-# 実行（dist/ フォルダにHTMLが生成されます）
-python generate_news.py
+python generate_news.py        # dist/ に出力(JEV_API_KEY 未設定ならキーワード判定)
+python scripts/validate_feeds.py
+python -m unittest discover -s tests -t .
 ```
-
----
-
-## ライセンス
-
-MIT License — 自由に改変・再配布できます。
-
----
-
-*このプロジェクトは [Claude](https://claude.ai/) (Anthropic) を使って構築・自動化されています。*
