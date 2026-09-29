@@ -16,8 +16,7 @@ from datetime import datetime, timezone, timedelta
 JST = timezone(timedelta(hours=9))
 EPOCH = datetime.min.replace(tzinfo=timezone.utc)
 
-IMP_LABEL = {5: '最重要', 4: '重要', 3: '注目'}
-FILTER_OPTIONS = [(0, 'すべての重要度'), (3, '注目以上'), (4, '重要以上'), (5, '最重要のみ')]
+FILTER_OPTIONS = [(0, 'すべてのレベル'), (3, 'Lv3 以上'), (4, 'Lv4 以上'), (5, 'Lv5 のみ')]
 PICKUP_N = 5
 
 
@@ -88,7 +87,16 @@ h2{font-size:1.25rem;line-height:1.4;margin:0}
 .tools input[type=search],.tools select{font:inherit;min-height:44px;padding:8px 12px;border:1px solid var(--line-strong);
   border-radius:8px;background:var(--bg);color:var(--tx)}
 .tools input[type=search]{flex:1 1 220px;min-width:0}
-.tools select{flex:0 1 auto}
+.tools select{flex:0 1 auto;max-width:100%}
+.tools #src{flex:1 1 200px;min-width:0}
+.tools .reset{font:inherit;font-size:.875rem;min-height:44px;padding:8px 14px;border:1px solid var(--line-strong);border-radius:8px;
+  background:var(--bg);color:var(--link);cursor:pointer}
+.tools .reset:hover{background:var(--bg-sub)}
+.src{font:inherit;font-size:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;
+  text-decoration:underline dotted;text-underline-offset:.25em;text-align:left}
+.src:hover{color:var(--link)}
+.js .src{min-height:24px}
+.no-js-src{text-decoration:none;cursor:default}
 .tools label.chk{display:inline-flex;align-items:center;gap:8px;min-height:44px;font-size:.875rem;cursor:pointer}
 .tools label.chk input{width:20px;height:20px}
 
@@ -116,17 +124,16 @@ h2{font-size:1.25rem;line-height:1.4;margin:0}
 .item-desc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .hide-desc .item-desc{display:none}
 .item-meta{margin:6px 0 0;font-size:.875rem;color:var(--tx-mute);line-height:1.5;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center}
-.badge{display:inline-block;font-size:.8125rem;font-weight:700;line-height:1.4;padding:1px 8px;border-radius:4px;margin-right:8px;vertical-align:1px;border:1px solid}
-.b5{background:var(--crit-bg);color:var(--crit-tx);border-color:var(--crit-bg)}
-.b4{color:var(--high);border-color:var(--high-line);background:transparent}
-.b3{color:var(--note);border-color:var(--line-strong);background:transparent}
-.conf{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
-.batt{position:relative;display:inline-block;width:28px;height:12px;border:1.5px solid var(--tx-mute);border-radius:3px;padding:1px}
-.batt::after{content:"";position:absolute;right:-4.5px;top:2.5px;width:3px;height:4px;background:var(--tx-mute);border-radius:0 2px 2px 0}
-.batt i{display:block;height:100%;background:var(--tx-mute);border-radius:1px}
-.conf.low .batt i{background:var(--high-line)}
-.conf.low .pct{color:var(--high)}
-.conf-none{font-size:.8125rem}
+.lv{display:inline-flex;align-items:center;gap:6px;margin-right:8px;font-size:.8125rem;font-weight:700;line-height:1;vertical-align:1px;letter-spacing:.04em;cursor:help}
+.lv .bars{display:inline-flex;align-items:flex-end;gap:2px;height:12px}
+.lv .bars i{display:block;width:3px;border-radius:1px;background:var(--line-strong);opacity:.4}
+.lv .bars i:nth-child(1){height:4px}.lv .bars i:nth-child(2){height:6px}.lv .bars i:nth-child(3){height:8px}
+.lv .bars i:nth-child(4){height:10px}.lv .bars i:nth-child(5){height:12px}
+.lv .bars i.on{opacity:1;background:var(--lvc)}
+.lv5{--lvc:var(--crit-bg);color:var(--crit-bg)}
+.lv4{--lvc:var(--high-line);color:var(--high)}
+.lv3{--lvc:var(--tx);color:var(--tx)}
+.lv2,.lv1{--lvc:var(--tx-mute);color:var(--tx-mute)}
 .item[data-imp="5"]{border-left:4px solid var(--crit-bg);padding-left:12px}
 .item[data-imp="4"]{border-left:4px solid var(--high-line);padding-left:12px}
 
@@ -158,7 +165,7 @@ try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark')d.setAttribut
 BODY_JS = """
 (function(){
 var $=function(s,r){return (r||document).querySelector(s)},$$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
-var d=document.documentElement,q=$('#q'),imp=$('#imp'),desc=$('#desc'),status=$('#status'),cat='all';
+var d=document.documentElement,q=$('#q'),imp=$('#imp'),src=$('#src'),desc=$('#desc'),status=$('#status'),reset=$('#reset'),cat='all';
 var items=$$('.cat .item'),cats=$$('.cat'),pick=$('#pickup'),tabs=$$('.tabs a');
 var mq=window.matchMedia('(prefers-color-scheme: dark)');
 function isDark(){var t=d.getAttribute('data-theme');return t?t==='dark':mq.matches}
@@ -167,9 +174,9 @@ function label(){tb.textContent=isDark()?'ライト表示にする':'ダーク�
 tb.addEventListener('click',function(){var n=isDark()?'light':'dark';d.setAttribute('data-theme',n);try{localStorage.setItem('theme',n)}catch(e){}label()});
 mq.addEventListener&&mq.addEventListener('change',label);label();
 function apply(){
-  var text=(q.value||'').trim().toLowerCase(),min=parseInt(imp.value,10)||0,shown=0,filtering=!!text||min>0||cat!=='all';
+  var text=(q.value||'').trim().toLowerCase(),min=parseInt(imp.value,10)||0,sv=src.value,shown=0,filtering=!!text||min>0||!!sv||cat!=='all';
   items.forEach(function(li){
-    var ok=(cat==='all'||li.dataset.cat===cat)&&(+li.dataset.imp>=min)&&(!text||li.dataset.text.indexOf(text)>-1);
+    var ok=(cat==='all'||li.dataset.cat===cat)&&(+li.dataset.imp>=min)&&(!sv||li.dataset.src===sv)&&(!text||li.dataset.text.indexOf(text)>-1);
     li.hidden=!ok;if(ok)shown++;
   });
   cats.forEach(function(s){
@@ -179,7 +186,8 @@ function apply(){
   });
   if(pick)pick.hidden=filtering;
   document.body.classList.toggle('hide-desc',!desc.checked);
-  status.textContent=filtering?(shown+'件を表示中'):'';
+  reset.hidden=!filtering;
+  status.textContent=filtering?((sv?('ソース「'+sv+'」: '):'')+shown+'件を表示中'):'';
   $('#empty').hidden=shown>0;
 }
 tabs.forEach(function(a){a.addEventListener('click',function(e){
@@ -187,32 +195,36 @@ tabs.forEach(function(a){a.addEventListener('click',function(e){
   tabs.forEach(function(t){t.removeAttribute('aria-current')});a.setAttribute('aria-current','true');
   apply();
 })});
-[q,imp,desc].forEach(function(el){el.addEventListener('input',apply)});
+[q,imp,src,desc].forEach(function(el){el.addEventListener('input',apply)});
+$$('.src').forEach(function(b){b.addEventListener('click',function(){src.value=b.dataset.src;apply();$('#tools').scrollIntoView({block:'start'})})});
+reset.addEventListener('click',function(){
+  q.value='';imp.value='0';src.value='';cat='all';
+  tabs.forEach(function(t){t.removeAttribute('aria-current')});tabs[0].setAttribute('aria-current','true');apply();
+});
 $('#tools').addEventListener('submit',function(e){e.preventDefault()});
 })();
 """
 
 
-def confidence_meter(it):
-    """Jev の確度(%)をバッテリー風のメーターで表示する。Jev 未判定の記事は「簡易判定」。"""
-    conf = it.get('confidence')
-    if conf is None:
-        return '<span class="conf conf-none" title="キーワードによる簡易判定です">簡易判定</span>'
-    pct = max(0, min(100, round(conf * 100)))
-    low = ' low' if pct < 40 else ''
-    return (f'<span class="conf{low}" role="img" aria-label="Jev の確度 {pct}パーセント" '
-            f'title="Jev の確度 {pct}%(判定にどれだけ自信があるか)">'
-            f'<span class="batt" aria-hidden="true"><i style="width:{pct}%"></i></span>'
-            f'<span class="pct">確度 {pct}%</span></span>')
+def level_indicator(it):
+    """重要レベル(1〜5)を「Lv」+5段の棒で表示する。ホバーで Jev の内訳と確度を確認できる。"""
+    lv = max(1, min(5, int(it.get('importance', 2))))
+    bars = ''.join(f'<i class="{"on" if n <= lv else ""}"></i>' for n in range(1, 6))
+    bd, conf = it.get('breakdown'), it.get('confidence')
+    if bd:
+        tip = (f'重要レベル {lv}/5 ・ 影響範囲 {bd["impact"]:.0%} / 緊急性 {bd["urgency"]:.0%} / '
+               f'新規性 {bd["novelty"]:.0%} / 宣伝度 {bd["noise"]:.0%}')
+        if conf is not None:
+            tip += f' ・ Jev 確度 {conf:.0%}'
+    else:
+        tip = f'重要レベル {lv}/5(キーワードによる簡易判定)'
+    return (f'<span class="lv lv{lv}" role="img" aria-label="重要レベル {lv}(5段階)" title="{esc(tip)}">'
+            f'Lv{lv}<span class="bars" aria-hidden="true">{bars}</span></span>')
 
 
 def item_li(it, show_cat=None):
     ja, en = it.get('title_ja') or it['title'], it['title']
     imp = it.get('importance', 2)
-    bd = it.get('breakdown')
-    tip = (f' title="影響範囲 {bd["impact"]:.0%} / 緊急性 {bd["urgency"]:.0%} / 新規性 {bd["novelty"]:.0%}'
-           f' / 宣伝度 {bd["noise"]:.0%}"') if bd else ''
-    badge = f'<span class="badge b{imp}"{tip}>{IMP_LABEL[imp]}</span>' if imp in IMP_LABEL else ''
     pub = it.get('published')
     time_html = ''
     if pub:
@@ -220,21 +232,36 @@ def item_li(it, show_cat=None):
         time_html = f'<time datetime="{pub.isoformat()}">{local.month}/{local.day} {local:%H:%M}</time>'
     desc = it.get('summary', '')
     search_text = ' '.join([ja, en, it['source'], desc]).lower()
-    meta = [f'<span>{esc(it["source"])}</span>']
-    meta.append(confidence_meter(it))
+    meta = [f'<button type="button" class="src" data-src="{esc(it["source"])}" '
+            f'title="このソースの記事だけ表示">{esc(it["source"])}</button>']
     if show_cat:
         meta.append(f'<span>{esc(show_cat)}</span>')
     if time_html:
         meta.append(time_html)
-    return (f'<li class="item" data-imp="{imp}" data-cat="{esc(it["category"])}" data-text="{esc(search_text)}">'
-            f'<h3 class="item-title">{badge}<a href="{esc(it["url"])}" target="_blank" rel="noopener noreferrer">{esc(ja)}</a></h3>'
+    return (f'<li class="item" data-imp="{imp}" data-cat="{esc(it["category"])}" data-src="{esc(it["source"])}" data-text="{esc(search_text)}">'
+            f'<h3 class="item-title">{level_indicator(it)}<a href="{esc(it["url"])}" target="_blank" rel="noopener noreferrer">{esc(ja)}</a></h3>'
             + (f'<p class="item-en" lang="en">{esc(en)}</p>' if ja != en else '')
             + (f'<p class="item-desc">{esc(desc)}</p>' if desc else '')
             + f'<p class="item-meta">{"".join(meta)}</p></li>')
 
 
+def source_options(items, shown_cats):
+    """ソース選択肢(カテゴリ順にグループ化・件数付き)。同名ソースが複数カテゴリにまたがる場合は最初のカテゴリに寄せる。"""
+    counts, home = {}, {}
+    for it in items:
+        counts[it['source']] = counts.get(it['source'], 0) + 1
+        home.setdefault(it['source'], it['category'])
+    groups = []
+    for c in shown_cats:
+        names = sorted(n for n, cid in home.items() if cid == c['id'])
+        if names:
+            opts = ''.join(f'<option value="{esc(n)}">{esc(n)} ({counts[n]})</option>' for n in names)
+            groups.append(f'<optgroup label="{esc(c["title"])}">{opts}</optgroup>')
+    return ''.join(groups)
+
+
 def _rank_key(it):
-    return (it.get('importance', 2), it.get('importance_score', 0), it['published'] or EPOCH)
+    return (it.get('importance_score', 0), it['published'] or EPOCH)
 
 
 def category_section(cat, items, show_n):
@@ -291,6 +318,7 @@ def build_html(items, categories, settings, archive_link):
                     f'<span class="n">{len(by_cat[c["id"]])}</span></a></li>')
 
     options = ''.join(f'<option value="{v}">{l}</option>' for v, l in FILTER_OPTIONS)
+    src_options = source_options(items, shown)
     sections = ''.join(category_section(c, by_cat[c['id']], settings['show_per_category']) for c in shown)
 
     body = f"""<a class="skip" href="#main">本文へ移動</a>
@@ -302,12 +330,14 @@ def build_html(items, categories, settings, archive_link):
 </div></header>
 <div class="wrap">
   <p class="stamp"><b>{now.year}年{now.month}月{now.day}日 {now:%H:%M}</b> 更新 ／ 全{len(items)}件
-  （最重要 {n5}件・重要 {n4}件）</p>
+  （Lv5 {n5}件・Lv4 {n4}件）</p>
   {pickup}
   <form class="tools" id="tools" role="search" aria-label="記事の絞り込み">
     <input type="search" id="q" placeholder="キーワードで絞り込み" aria-label="キーワードで絞り込み" autocomplete="off">
-    <select id="imp" aria-label="重要度">{options}</select>
+    <select id="imp" aria-label="重要レベル">{options}</select>
+    <select id="src" aria-label="ソース"><option value="">すべてのソース</option>{src_options}</select>
     <label class="chk"><input type="checkbox" id="desc" checked>概要を表示</label>
+    <button type="button" class="reset" id="reset" hidden>絞り込みを解除</button>
   </form>
   <nav class="tabs" aria-label="カテゴリ"><ul>{''.join(tabs)}</ul></nav>
   <p class="status" id="status" role="status" aria-live="polite"></p>
@@ -315,7 +345,7 @@ def build_html(items, categories, settings, archive_link):
   <footer class="site-footer">
     <p>収集元は <a href="https://github.com/mazume-tech-club/tech-news-digest/blob/main/feeds.yml">feeds.yml</a> で管理しています。
     追加したいフィードがあれば Pull Request をお送りください。</p>
-    <p>重要度は JEV による判定(利用できない場合はキーワード判定)です。英語の見出しは自動翻訳で、原文を併記しています。</p>
+    <p>Lv は 1〜5 の重要レベル(5が最重要)で、Jev による判定です(利用できない場合はキーワード判定)。並び順は Jev のスコア順です。英語の見出しは自動翻訳で、原文を併記しています。</p>
   </footer>
 </div>"""
     icon = archive_link.rstrip('/').removesuffix('/archive') + '/favicon.svg'
