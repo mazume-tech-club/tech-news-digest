@@ -40,6 +40,16 @@ class HeatIndicator(unittest.TestCase):
         self.assertIn('いいね数による簡易判定', render.level_indicator({'importance': 3, 'profile': 'heat'}))
 
 
+class Robustness(unittest.TestCase):
+    def test_mismatched_breakdown_does_not_crash(self):
+        # 重要度用の内訳を持つ記事が heat 扱いになっても、ページ生成を止めない
+        html = render.level_indicator({'importance': 4, 'profile': 'heat',
+                                       'breakdown': {'impact': 0.5, 'urgency': 0.5, 'novelty': 0.5, 'noise': 0.1}})
+        self.assertIn('アツさ4', html)
+        html = render.level_indicator({'importance': 4, 'breakdown': {'curiosity': 1.0}})
+        self.assertIn('Lv4', html)
+
+
 class Ranking(unittest.TestCase):
     def test_sorted_by_jev_score_not_bucket(self):
         t = datetime(2026, 9, 30, tzinfo=timezone.utc)

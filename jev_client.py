@@ -22,7 +22,7 @@ import requests
 
 API_URL = os.environ.get('JEV_API_URL', '').strip() or 'https://api.typesafe.ai/v1/systemone'
 MODEL = os.environ.get('JEV_MODEL', '').strip() or 'jev-latest'
-CACHE_VERSION = 3          # 質問・重みを変えたら上げる(キャッシュが破棄される)
+CACHE_VERSION = 4         # 質問・重みを変えたら上げる(キャッシュが破棄される)
 MAX_WORKERS = 6              # 上限 1,200 req/分 に対して十分低い
 MAX_ATTEMPTS = 3
 TIMEOUT = 30
@@ -271,6 +271,12 @@ def _apply_composite(item, composite):
     item['breakdown'] = breakdown
 
 
+def _cache_key(item):
+    """カテゴリ(=重みと質問セット)が変わると別の判定結果になるため、カテゴリも含めてキャッシュする。
+    同じ記事が別カテゴリ(例: AI と Zenn 人気記事)に移っても、他方の判定結果を誤用しない。"""
+    return f"{item.get('category', '')}|{item['url']}"
+
+
 def score_items(items, cache_in=None, cache_out=None):
     """各 item に importance(1-5) / importance_score(0-1) / scored_by / breakdown を付与する。"""
     key = os.environ.get('JEV_API_KEY', '').strip()
@@ -278,7 +284,7 @@ def score_items(items, cache_in=None, cache_out=None):
 
     todo = []
     for it in items:
-        hit = cache.get(it['url'])
+        hit = cache.get(_cache_key(it))
         if hit:
             it.update(importance=hit['importance'], importance_score=hit['score'],
                       scored_by=hit['by'], confidence=hit.get('conf'), breakdown=hit.get('breakdown'))
@@ -320,7 +326,7 @@ def score_items(items, cache_in=None, cache_out=None):
     # キャッシュには Jev で判定できたものだけ保存(キーワード判定は次回再挑戦する)
     if cache_out:
         save_cache(cache_out, {
-            i['url']: {'importance': i['importance'], 'score': i['importance_score'],
+            _cache_key(i): {'importance': i['importance'], 'score': i['importance_score'],
                        'by': i['scored_by'], 'conf': i.get('confidence'), 'breakdown': i.get('breakdown')}
             for i in items if i.get('scored_by', '').startswith('jev')})
 

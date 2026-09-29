@@ -117,7 +117,7 @@ feeds:
   - { name: Zenn 人気記事,            url: "https://zenn.dev/feed",                                    category: zenn,  max_items: 20, likes: zenn }
 
   # ── 企業テックブログ ────────────────────────────────────────────────
-  - { name: メルカリ,                 url: "https://engineering.mercari.com/blog/feed.xml",            category: corp }
+  - { name: メルカリ,                 url: "https://engineering.mercari.com/blog/feed.xml",            category: corp, enabled: false }  # GitHub Actions のIPから403(2026-09時点)
   - { name: サイボウズ,               url: "https://blog.cybozu.io/feed",                              category: corp }
   - { name: Yahoo! JAPAN,             url: "https://techblog.yahoo.co.jp/atom.xml",                    category: corp }
   - { name: CyberAgent,               url: "https://developers.cyberagent.co.jp/blog/feed/",           category: corp }

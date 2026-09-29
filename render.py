@@ -211,6 +211,10 @@ $('#tools').addEventListener('submit',function(e){e.preventDefault()});
 """
 
 
+IMPORTANCE_LABELS = {'impact': '影響範囲', 'urgency': '緊急性', 'novelty': '新規性', 'noise': '宣伝度'}
+HEAT_LABELS = {'curiosity': '面白さ', 'appeal': '共感の広がり', 'learning': '学び', 'noise': '宣伝度'}
+
+
 def level_indicator(it):
     """重要レベル(1〜5)を「Lv」+5段の棒で表示する。ホバーで Jev の内訳と確度を確認できる。"""
     lv = max(1, min(5, int(it.get('importance', 2))))
@@ -218,16 +222,15 @@ def level_indicator(it):
     name, short = ('アツさ', 'アツさ') if heat else ('重要レベル', 'Lv')
     bars = ''.join(f'<i class="{"on" if n <= lv else ""}"></i>' for n in range(1, 6))
     bd, conf = it.get('breakdown'), it.get('confidence')
-    if bd and heat:
-        tip = (f'{name} {lv}/5 ・ 面白さ {bd["curiosity"]:.0%} / 共感の広がり {bd["appeal"]:.0%} / '
-               f'学び {bd["learning"]:.0%} / 宣伝度 {bd["noise"]:.0%}')
-    elif bd:
-        tip = (f'{name} {lv}/5 ・ 影響範囲 {bd["impact"]:.0%} / 緊急性 {bd["urgency"]:.0%} / '
-               f'新規性 {bd["novelty"]:.0%} / 宣伝度 {bd["noise"]:.0%}')
+    # 内訳は「その記事の判定に使われた観点」だけを表示する(観点が想定と違っても表示を止めない)
+    labels = HEAT_LABELS if heat else IMPORTANCE_LABELS
+    parts = [f'{label} {bd[k]:.0%}' for k, label in labels.items() if bd and isinstance(bd.get(k), (int, float))]
+    if parts:
+        tip = f'{name} {lv}/5 ・ ' + ' / '.join(parts)
+        if conf is not None:
+            tip += f' ・ Jev 確度 {conf:.0%}'
     else:
         tip = f'{name} {lv}/5({"いいね数" if heat else "キーワード"}による簡易判定)'
-    if bd and conf is not None:
-        tip += f' ・ Jev 確度 {conf:.0%}'
     label = f'{name} {lv}(5段階)'
     return (f'<span class="lv lv{lv}" role="img" aria-label="{label}" title="{esc(tip)}">'
             f'{short}{lv}<span class="bars" aria-hidden="true">{bars}</span></span>')
