@@ -161,5 +161,19 @@ class HeatProfile(unittest.TestCase):
         self.assertEqual((fb['scored_by'], fb['importance']), ('keyword', 4))
 
 
+class CacheKey(unittest.TestCase):
+    def test_same_url_in_other_category_is_not_reused(self):
+        # AI カテゴリ(重要度)で判定・保存 → 同じ記事が Zenn 人気記事(アツさ)に現れても別扱い
+        with tempfile.TemporaryDirectory() as d, mock.patch.dict(os.environ, {'JEV_API_KEY': 'k'}):
+            cache = os.path.join(d, 'c.json')
+            with mock.patch.object(jc, 'call_jev', return_value=answers(3, 3, 2, 0.0)):
+                jc.score_items([item(url='https://zenn.dev/u/articles/a', category='ai')], cache_out=cache)
+            heat_item = dict(item(url='https://zenn.dev/u/articles/a', category='zenn'), profile='heat')
+            with mock.patch.object(jc, 'call_jev', return_value=heat_answers(3, 2, 3, 0.0)) as m:
+                jc.score_items([heat_item], cache_in=cache, cache_out=cache)
+                self.assertEqual(m.call_count, 1)  # キャッシュを誤用せず再判定する
+            self.assertIn('curiosity', heat_item['breakdown'])
+
+
 if __name__ == '__main__':
     unittest.main()
