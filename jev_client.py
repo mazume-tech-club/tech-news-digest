@@ -15,13 +15,14 @@ import json
 import os
 import sys
 import time
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 
 import requests
 
 API_URL = os.environ.get('JEV_API_URL', '').strip() or 'https://api.typesafe.ai/v1/systemone'
 MODEL = os.environ.get('JEV_MODEL', '').strip() or 'jev-latest'
-CACHE_VERSION = 1            # 質問・重みを変えたら上げる(キャッシュが破棄される)
+CACHE_VERSION = 2           # 質問・重みを変えたら上げる(キャッシュが破棄される)
 MAX_WORKERS = 6              # 上限 1,200 req/分 に対して十分低い
 MAX_ATTEMPTS = 3
 TIMEOUT = 30
@@ -197,6 +198,7 @@ def _apply_keyword(item):
     item['importance'] = keyword_level(item)
     item['importance_score'] = (item['importance'] - 1) / 4
     item['scored_by'] = 'keyword'
+    item['confidence'] = None
     item['breakdown'] = None
 
 
@@ -209,6 +211,7 @@ def _apply_composite(item, composite):
         item['scored_by'] = 'jev'
     item['importance_score'] = round(score, 4)
     item['importance'] = level_from_score(score)
+    item['confidence'] = round(conf, 3)
     item['breakdown'] = breakdown
 
 
@@ -222,7 +225,7 @@ def score_items(items, cache_in=None, cache_out=None):
         hit = cache.get(it['url'])
         if hit:
             it.update(importance=hit['importance'], importance_score=hit['score'],
-                      scored_by=hit['by'], breakdown=hit.get('breakdown'))
+                      scored_by=hit['by'], confidence=hit.get('conf'), breakdown=hit.get('breakdown'))
         else:
             todo.append(it)
     cached_n = len(items) - len(todo)
@@ -232,7 +235,7 @@ def score_items(items, cache_in=None, cache_out=None):
         for it in todo:
             _apply_keyword(it)
     else:
-        auth_failed = []
+        auth_failed, errors = [], []
 
         def work(it):
             if auth_failed:
@@ -242,11 +245,14 @@ def score_items(items, cache_in=None, cache_out=None):
             except AuthError as e:
                 auth_failed.append(str(e))
             except Exception as e:  # キーやレスポンス本文は出力しない
-                print(f'  [WARN] Jev failed: {type(e).__name__}', file=sys.stderr)
+                errors.append(type(e).__name__)
             return it, None
 
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
             results = list(ex.map(work, todo))
+        if errors:
+            summary = ', '.join(f'{n} x{c}' for n, c in Counter(errors).most_common())
+            print(f'  [WARN] Jev 呼び出し失敗 {len(errors)}件({summary}) → 該当記事はキーワード判定', file=sys.stderr)
         if auth_failed:
             print(f'  [ERROR] Jev 認証エラー({auth_failed[0]}) → JEV_API_KEY を確認してください', file=sys.stderr)
         for it, composite in results:
@@ -259,7 +265,7 @@ def score_items(items, cache_in=None, cache_out=None):
     if cache_out:
         save_cache(cache_out, {
             i['url']: {'importance': i['importance'], 'score': i['importance_score'],
-                       'by': i['scored_by'], 'breakdown': i.get('breakdown')}
+                       'by': i['scored_by'], 'conf': i.get('confidence'), 'breakdown': i.get('breakdown')}
             for i in items if i.get('scored_by', '').startswith('jev')})
 
     jev_n = sum(1 for i in items if i.get('scored_by', '').startswith('jev'))

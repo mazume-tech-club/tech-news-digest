@@ -120,6 +120,13 @@ h2{font-size:1.25rem;line-height:1.4;margin:0}
 .b5{background:var(--crit-bg);color:var(--crit-tx);border-color:var(--crit-bg)}
 .b4{color:var(--high);border-color:var(--high-line);background:transparent}
 .b3{color:var(--note);border-color:var(--line-strong);background:transparent}
+.conf{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.batt{position:relative;display:inline-block;width:28px;height:12px;border:1.5px solid var(--tx-mute);border-radius:3px;padding:1px}
+.batt::after{content:"";position:absolute;right:-4.5px;top:2.5px;width:3px;height:4px;background:var(--tx-mute);border-radius:0 2px 2px 0}
+.batt i{display:block;height:100%;background:var(--tx-mute);border-radius:1px}
+.conf.low .batt i{background:var(--high-line)}
+.conf.low .pct{color:var(--high)}
+.conf-none{font-size:.8125rem}
 .item[data-imp="5"]{border-left:4px solid var(--crit-bg);padding-left:12px}
 .item[data-imp="4"]{border-left:4px solid var(--high-line);padding-left:12px}
 
@@ -186,6 +193,19 @@ $('#tools').addEventListener('submit',function(e){e.preventDefault()});
 """
 
 
+def confidence_meter(it):
+    """Jev の確度(%)をバッテリー風のメーターで表示する。Jev 未判定の記事は「簡易判定」。"""
+    conf = it.get('confidence')
+    if conf is None:
+        return '<span class="conf conf-none" title="キーワードによる簡易判定です">簡易判定</span>'
+    pct = max(0, min(100, round(conf * 100)))
+    low = ' low' if pct < 40 else ''
+    return (f'<span class="conf{low}" role="img" aria-label="Jev の確度 {pct}パーセント" '
+            f'title="Jev の確度 {pct}%(判定にどれだけ自信があるか)">'
+            f'<span class="batt" aria-hidden="true"><i style="width:{pct}%"></i></span>'
+            f'<span class="pct">確度 {pct}%</span></span>')
+
+
 def item_li(it, show_cat=None):
     ja, en = it.get('title_ja') or it['title'], it['title']
     imp = it.get('importance', 2)
@@ -201,6 +221,7 @@ def item_li(it, show_cat=None):
     desc = it.get('summary', '')
     search_text = ' '.join([ja, en, it['source'], desc]).lower()
     meta = [f'<span>{esc(it["source"])}</span>']
+    meta.append(confidence_meter(it))
     if show_cat:
         meta.append(f'<span>{esc(show_cat)}</span>')
     if time_html:
@@ -227,11 +248,12 @@ def category_section(cat, items, show_n):
             f'<h2 id="h-{esc(cat["id"])}">{esc(cat["title"])}<span class="count">{len(items)}件</span></h2>{body}</section>')
 
 
-def _page(title, body, script=''):
+def _page(title, body, script='', icon_href='favicon.svg'):
     return f"""<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" href="{esc(icon_href)}" type="image/svg+xml">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>{esc(title)}</title>
@@ -296,7 +318,8 @@ def build_html(items, categories, settings, archive_link):
     <p>重要度は JEV による判定(利用できない場合はキーワード判定)です。英語の見出しは自動翻訳で、原文を併記しています。</p>
   </footer>
 </div>"""
-    return _page(f'Tech News Digest — {now.year}年{now.month}月{now.day}日', body, BODY_JS)
+    icon = archive_link.rstrip('/').removesuffix('/archive') + '/favicon.svg'
+    return _page(f'Tech News Digest — {now.year}年{now.month}月{now.day}日', body, BODY_JS, icon)
 
 
 def build_archive_index(dates, pages_url):
@@ -316,4 +339,4 @@ def build_archive_index(dates, pages_url):
   <div class="header-tools"><a class="btn" href="{esc(pages_url)}/">最新のニュースへ</a></div>
 </div></header>
 <div class="wrap"><main id="main">{content}</main></div>"""
-    return _page('過去のニュース — Tech News Digest', body)
+    return _page('過去のニュース — Tech News Digest', body, icon_href=f'{pages_url}/favicon.svg')

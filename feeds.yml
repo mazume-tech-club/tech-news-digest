@@ -67,7 +67,7 @@ feeds:
   # ── インフラ・クラウド ──────────────────────────────────────────────
   - { name: AWS 日本語ブログ,         url: "https://aws.amazon.com/jp/blogs/news/feed/",               category: cloud }
   - { name: AWS What's New,           url: "https://aws.amazon.com/jp/about-aws/whats-new/recent/feed/", category: cloud }
-  - { name: Azure Updates,            url: "https://azure.microsoft.com/ja-jp/updates/feed/",          category: cloud }
+  - { name: Azure Updates,            url: "https://www.microsoft.com/releasecommunications/api/v2/azure/rss", category: cloud, lang: en }
   - { name: クラウドWatch,            url: "https://cloud.watch.impress.co.jp/data/rss/1.0/clw/feed.rdf", category: cloud }
   - { name: DevelopersIO,             url: "https://dev.classmethod.jp/feed/",                         category: cloud }
   - { name: さくらのナレッジ,         url: "https://knowledge.sakura.ad.jp/rss/",                      category: cloud }
@@ -125,5 +125,5 @@ feeds:
   # ── 個人ブログ ──────────────────────────────────────────────────────
   - { name: Jxck,                     url: "https://blog.jxck.io/feed.atom",                           category: person, enabled: false }  # URL要確認(2026-09時点で取得不可)
   - { name: Nishio Hirokazu,          url: "https://nishio.hateblo.jp/rss",                            category: person }
-  - { name: kazuho,                   url: "https://blog.kazuhooku.com/feeds/posts/default",           category: person }
+  - { name: kazuho,                   url: "https://blog.kazuhooku.com/feeds/posts/default",           category: person, enabled: false }  # TLS接続に失敗(2026-09時点)
   - { name: Simon Willison,           url: "https://simonwillison.net/atom/everything/",               category: person, lang: en }
