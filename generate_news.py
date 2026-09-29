@@ -159,7 +159,9 @@ def main():
     translate_titles(items)
 
     print('\n[3/4] 重要度判定')
-    score_items(items)
+    prev = os.environ.get('PREV_PAGES_DIR', '_pages')
+    score_items(items, cache_in=os.path.join(prev, 'data', 'jev-cache.json'),
+                cache_out=os.path.join('dist', 'data', 'jev-cache.json'))
 
     print('\n[4/4] HTML生成')
     now = datetime.now(JST)
@@ -173,7 +175,7 @@ def main():
     for path in (os.path.join(dist, 'index.html'), os.path.join(dated_dir, f'{date_file}.html')):
         with open(path, 'w', encoding='utf-8') as f:
             f.write(page)
-    dates = existing_archive_dates(os.environ.get('PREV_PAGES_DIR', '_pages')) | {date_file}
+    dates = existing_archive_dates(prev) | {date_file}
     with open(os.path.join(dist, 'archive', 'index.html'), 'w', encoding='utf-8') as f:
         f.write(build_archive_index(dates, pages_url))
 

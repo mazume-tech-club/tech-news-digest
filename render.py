@@ -189,7 +189,10 @@ $('#tools').addEventListener('submit',function(e){e.preventDefault()});
 def item_li(it, show_cat=None):
     ja, en = it.get('title_ja') or it['title'], it['title']
     imp = it.get('importance', 2)
-    badge = f'<span class="badge b{imp}">{IMP_LABEL[imp]}</span>' if imp in IMP_LABEL else ''
+    bd = it.get('breakdown')
+    tip = (f' title="影響範囲 {bd["impact"]:.0%} / 緊急性 {bd["urgency"]:.0%} / 新規性 {bd["novelty"]:.0%}'
+           f' / 宣伝度 {bd["noise"]:.0%}"') if bd else ''
+    badge = f'<span class="badge b{imp}"{tip}>{IMP_LABEL[imp]}</span>' if imp in IMP_LABEL else ''
     pub = it.get('published')
     time_html = ''
     if pub:
@@ -210,7 +213,7 @@ def item_li(it, show_cat=None):
 
 
 def _rank_key(it):
-    return (it.get('importance', 2), it['published'] or EPOCH)
+    return (it.get('importance', 2), it.get('importance_score', 0), it['published'] or EPOCH)
 
 
 def category_section(cat, items, show_n):

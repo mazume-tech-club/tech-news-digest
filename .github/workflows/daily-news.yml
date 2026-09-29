@@ -12,6 +12,7 @@ on:
       - 'jev_client.py'
       - 'requirements.txt'
       - '.github/workflows/daily-news.yml'
+      - 'render.py'
 
 # gh-pages への push のみ許可(それ以外は読み取り専用)
 permissions:
@@ -53,8 +54,7 @@ jobs:
           GH_OWNER:  ${{ github.repository_owner }}
           GH_REPO:   ${{ github.event.repository.name }}
           PAGES_URL: 'https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}'
-          # JEV API(Settings → Secrets and variables → Actions に登録)
-          JEV_API_URL: ${{ secrets.JEV_API_URL }}
+          # Jev API キー(Settings → Secrets and variables → Actions に登録)
           JEV_API_KEY: ${{ secrets.JEV_API_KEY }}
         run: python generate_news.py
 

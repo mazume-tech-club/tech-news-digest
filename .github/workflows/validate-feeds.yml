@@ -1,10 +1,14 @@
-name: ✅ Validate feeds.yml
+name: ✅ Validate feeds.yml / Tests
 
 on:
   pull_request:
     paths:
       - 'feeds.yml'
-      - 'scripts/validate_feeds.py'
+      - 'scripts/**'
+      - 'jev_client.py'
+      - 'generate_news.py'
+      - 'render.py'
+      - 'tests/**'
 
 permissions:
   contents: read
@@ -20,4 +24,5 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
       - run: pip install -r requirements.txt
+      - run: python -m unittest discover -s tests -t .
       - run: python scripts/validate_feeds.py
