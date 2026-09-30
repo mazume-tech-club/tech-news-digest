@@ -314,12 +314,32 @@ def category_section(cat, items, show_n):
             f'<h2 id="h-{esc(cat["id"])}">{esc(cat["title"])}<span class="count">{len(items)}件</span></h2>{note}{body}</section>')
 
 
-def _page(title, body, script='', icon_href='favicon.svg'):
+def head_icons(base):
+    """アイコン・PWA関連の <head> タグ。base はサイトのルートURL(末尾スラッシュなし)。
+    ページは /2026/09/x.html や /archive/ など階層が違うため、すべて絶対URLで指す。
+    - iOS(ホーム画面に追加): apple-touch-icon(PNG)。SVG は使われず、無いと文字だけのアイコンになる
+    - Android / Chrome: manifest の PNG アイコン(通常 + maskable)
+    - ブラウザのタブ: SVG(対応ブラウザ)、古いブラウザは ICO
+    """
+    b = esc(base.rstrip('/'))
+    return (f'<link rel="icon" href="{b}/favicon.svg" type="image/svg+xml">\n'
+            f'<link rel="icon" href="{b}/favicon.ico" sizes="48x48">\n'
+            f'<link rel="apple-touch-icon" href="{b}/apple-touch-icon.png">\n'
+            f'<link rel="manifest" href="{b}/manifest.webmanifest">\n'
+            '<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">\n'
+            '<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">\n'
+            '<meta name="application-name" content="News Digest">\n'
+            '<meta name="apple-mobile-web-app-title" content="News Digest">\n'
+            '<meta name="mobile-web-app-capable" content="yes">\n'
+            '<meta name="apple-mobile-web-app-capable" content="yes">')
+
+
+def _page(title, body, script='', base=''):
     return f"""<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<link rel="icon" href="{esc(icon_href)}" type="image/svg+xml">
+{head_icons(base)}
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>{esc(title)}</title>
@@ -388,8 +408,8 @@ def build_html(items, categories, settings, archive_link):
     <p>Lv は 1〜5 の重要レベル(5が最重要)で、Jev による判定です(利用できない場合はキーワード判定)。並び順は Jev のスコア順です(Qiita・Zenn の人気記事はいいね数順で、Jev は「アツさ」を判定します)。英語の見出しは自動翻訳で、原文を併記しています。</p>
   </footer>
 </div>"""
-    icon = archive_link.rstrip('/').removesuffix('/archive') + '/favicon.svg'
-    return _page(f'Tech News Digest — {now.year}年{now.month}月{now.day}日', body, BODY_JS, icon)
+    base = archive_link.rstrip('/').removesuffix('/archive')
+    return _page(f'Tech News Digest — {now.year}年{now.month}月{now.day}日', body, BODY_JS, base)
 
 
 def build_archive_index(dates, pages_url):
@@ -409,4 +429,4 @@ def build_archive_index(dates, pages_url):
   <div class="header-tools"><a class="btn" href="{esc(pages_url)}/">最新のニュースへ</a></div>
 </div></header>
 <div class="wrap"><main id="main">{content}</main></div>"""
-    return _page('過去のニュース — Tech News Digest', body, icon_href=f'{pages_url}/favicon.svg')
+    return _page('過去のニュース — Tech News Digest', body, base=pages_url)
