@@ -28,6 +28,8 @@ jev_client.py                   Jev API クライアント・合成スコア・�
 docs/jev-design.md              Jev 連携の設計
 tests/                          単体テスト
 scripts/validate_feeds.py       feeds.yml の検証(PR時)
+scripts/make_icons.py           アイコン(PNG/ICO)の再生成(デザイン変更時のみ。要 pillow)
+assets/                         favicon.svg / favicon.ico / apple-touch-icon.png / icons/ / manifest.webmanifest(サイトのルートに公開)
 .github/workflows/
   daily-news.yml                毎日19:05 JST / main への反映時 / 手動 → gh-pages へデプロイ
   validate-feeds.yml            PR で feeds.yml を検証

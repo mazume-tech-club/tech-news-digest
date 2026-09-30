@@ -218,8 +218,8 @@ def main():
     dated_dir = os.path.join(dist, now.strftime('%Y'), now.strftime('%m'))
     os.makedirs(dated_dir, exist_ok=True)
     os.makedirs(os.path.join(dist, 'archive'), exist_ok=True)
-    shutil.copyfile(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'favicon.svg'),
-                    os.path.join(dist, 'favicon.svg'))
+    # アイコン・manifest 一式(assets/ 配下)をサイトのルートへコピー
+    shutil.copytree(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets'), dist, dirs_exist_ok=True)
 
     page = build_html(items, categories, settings, f'{pages_url}/archive/')
     for path in (os.path.join(dist, 'index.html'), os.path.join(dated_dir, f'{date_file}.html')):
