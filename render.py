@@ -154,9 +154,25 @@ details.more summary{cursor:pointer;min-height:44px;display:flex;align-items:cen
 .arch-list a{display:block;padding:12px 4px;min-height:44px}
 
 @media (max-width:640px){
-  .wrap{padding:0 14px}.tabs a{padding:8px 14px}
+  .wrap{padding:0 14px}
   .header-tools{width:100%}
   .pickup{padding:14px 12px;margin-left:-4px;margin-right:-4px}
+  /* 絞り込み: 検索は1行、重要レベルとソースは横並び、操作系は1行にまとめる */
+  .tools{gap:6px 8px;margin-top:12px}
+  .tools input[type=search]{flex:1 1 100%}
+  .tools select,.tools #src{flex:1 1 calc(50% - 4px);min-width:0;font-size:.875rem;padding:8px}
+  .tools label.chk{flex:1 1 auto}
+  .tools .reset{padding:8px 12px}
+  /* カテゴリ: 折り返さず横スクロールの1行チップにして、画面上部に固定する */
+  .tabs{position:sticky;top:0;z-index:20;margin:8px -14px 0;background:var(--bg);border-bottom:1px solid var(--line);
+    -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 20px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 20px),transparent)}
+  .tabs ul{flex-wrap:nowrap;gap:6px;overflow-x:auto;padding:8px 14px;scroll-snap-type:x proximity;scroll-padding:0 14px;
+    scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .tabs ul::-webkit-scrollbar{display:none}
+  .tabs li{flex:none;scroll-snap-align:start}
+  .tabs a{min-height:36px;padding:4px 12px;font-size:.8125rem;gap:4px;white-space:nowrap}
+  .tabs .n{font-size:.75rem}
+  .cat{scroll-margin-top:56px}
 }
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 """
@@ -195,16 +211,19 @@ function apply(){
   status.textContent=filtering?((sv?('ソース「'+sv+'」: '):'')+shown+'件を表示中'):'';
   $('#empty').hidden=shown>0;
 }
+function keepTab(a){var u=a.parentNode.parentNode,r=a.getBoundingClientRect(),w=u.getBoundingClientRect();
+  if(u.scrollWidth>u.clientWidth)u.scrollTo({left:u.scrollLeft+r.left-w.left-(w.width-r.width)/2,behavior:'smooth'});
+  var t=$('.tabs');if(getComputedStyle(t).position==='sticky'){var y=status.getBoundingClientRect().top+window.scrollY-t.offsetHeight;if(window.scrollY>y)window.scrollTo(0,y)}}
 tabs.forEach(function(a){a.addEventListener('click',function(e){
   e.preventDefault();cat=a.dataset.cat;
   tabs.forEach(function(t){t.removeAttribute('aria-current')});a.setAttribute('aria-current','true');
-  apply();
+  apply();keepTab(a);
 })});
 [q,imp,src,desc].forEach(function(el){el.addEventListener('input',apply)});
 $$('.src').forEach(function(b){b.addEventListener('click',function(){src.value=b.dataset.src;apply();$('#tools').scrollIntoView({block:'start'})})});
 reset.addEventListener('click',function(){
   q.value='';imp.value='0';src.value='';cat='all';
-  tabs.forEach(function(t){t.removeAttribute('aria-current')});tabs[0].setAttribute('aria-current','true');apply();
+  tabs.forEach(function(t){t.removeAttribute('aria-current')});tabs[0].setAttribute('aria-current','true');apply();keepTab(tabs[0]);
 });
 $('#tools').addEventListener('submit',function(e){e.preventDefault()});
 })();
