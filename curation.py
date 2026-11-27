@@ -20,6 +20,10 @@ _STOP = {
     'the', 'and', 'for', 'with', 'from', 'that', 'this', 'your', 'how', 'what', 'why', 'new', 'now',
     'are', 'was', 'you', 'its', 'into', 'about', 'more', 'than', 'will', 'can', 'all', 'our', 'out',
     'news', 'blog', 'release', 'notes', 'update', 'updates', 'version', 'using', 'use',
+    'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october',
+    'november', 'december', 'introducing', 'announcing', 'building', 'welcome', 'meet', 'inside', 'making',
+    'getting', 'when', 'where', 'here', 'today', 'more', 'just', 'one', 'two', 'part',
+    'to', 'in', 'on', 'of', 'an', 'is', 'at', 'by', 'it', 'be', 'as', 'or', 'we',
 }
 _STOP_JA = {
     'について', 'お知らせ', 'ニュース', 'まとめ', 'リリース', 'アップデート', 'ブログ', 'サービス',
@@ -40,9 +44,9 @@ def extract_keyword(title):
     if m:
         return m.group(1).strip()
     asc = [t for t in _ASCII_TOKEN.findall(title) if t.lower() not in _STOP and len(t) >= 2]
-    caps = [t for t in asc if t[0].isupper() or any(c.isdigit() for c in t)]
+    caps = [t for t in asc if len(t) >= 3 and (t[0].isupper() or any(c.isdigit() for c in t))]
     if caps:
-        return max(caps[:3], key=len) if len(caps[0]) < 3 else caps[0]
+        return caps[0]
     for rx in (_KATA, _KANJI):
         for t in rx.findall(title):
             if t not in _STOP_JA:
@@ -50,6 +54,65 @@ def extract_keyword(title):
     if asc:
         return asc[0]
     return title[:12]
+
+
+# ── 話題(フォローの単位) ───────────────────────────────────────────────
+# フォローは「その記事だけの固有名詞」ではなく、毎日の記事に繰り返し出てくる技術・製品・テーマの単位で行う。
+# (表示名, 正規表現)。表示名がフォローのキーワードになり、別名(正規表現)でも一致する。上ほど優先。
+
+TOPICS = [
+    ('AWS', r'\baws\b|amazon web services|lambda|\bs3\b|bedrock|\bec2\b'),
+    ('Google Cloud', r'google cloud|\bgcp\b|bigquery|cloud run|\bgke\b|vertex ai'),
+    ('Azure', r'\bazure\b'),
+    ('Kubernetes', r'kubernetes|\bk8s\b'),
+    ('Docker', r'docker|コンテナ'),
+    ('Terraform', r'terraform'),
+    ('GitHub', r'github'),
+    ('Linux', r'linux'),
+    ('Windows', r'windows'),
+    ('macOS', r'macos|\bmac\b|macbook'),
+    ('iPhone', r'iphone|\bios\b'),
+    ('Android', r'android'),
+    ('Chrome', r'chrome'),
+    ('Python', r'python'),
+    ('TypeScript', r'typescript|javascript|node\.js|\bdeno\b|\bbun\b'),
+    ('Rust', r'\brust\b'),
+    ('Go', r'\bgolang\b|\bgo言語|\bgo 1\.\d'),
+    ('Java', r'\bjava\b|spring boot'),
+    ('React', r'\breact\b|next\.js'),
+    ('PostgreSQL', r'postgres|postgresql'),
+    ('Claude', r'claude|anthropic'),
+    ('OpenAI', r'openai|chatgpt|\bgpt-?\d|codex'),
+    ('Gemini', r'gemini'),
+    ('LLM', r'\bllm\b|大規模言語モデル|生成ai|生成 ai'),
+    ('AIエージェント', r'エージェント|\bagents?\b|\bmcp\b'),
+    ('Raspberry Pi', r'raspberry ?pi|ラズパイ'),
+    ('NVIDIA', r'nvidia|geforce|\bcuda\b'),
+    ('Cloudflare', r'cloudflare'),
+    ('マイナンバー', r'マイナンバー|マイナ(アプリ|ポータル|保険証|カード)'),
+    ('ランサムウェア', r'ランサム|ransomware'),
+    ('情報漏えい', r'情報漏え?い|情報漏洩|流出|不正アクセス|data breach'),
+    ('脆弱性', r'脆弱性|vulnerabilit|cve-\d|ゼロデイ|zero-day'),
+    ('フィッシング', r'フィッシング|phishing|詐欺メール'),
+    ('マルウェア', r'マルウェア|malware|トロイの木馬|情報窃取'),
+    ('障害', r'大規模障害|障害(が)?発生|outage'),
+    ('料金改定', r'値上げ|値下げ|価格改定|料金改定'),
+    ('サービス終了', r'サービス終了|提供終了|サポート終了|end of life|deprecat'),
+]
+_TOPICS = [(name, re.compile(rx, re.I)) for name, rx in TOPICS]
+
+
+def topics_of(item):
+    """記事に当てはまる話題(TOPICS の表示名)を優先順に返す。タイトル・概要に加えて、
+    ソース名(例: 「Cloud Run リリースノート」「Zenn(AWS)」)も見る。"""
+    text = _text(item) + ' ' + str(item.get('source') or '')
+    return [name for name, rx in _TOPICS if rx.search(text)]
+
+
+def follow_keyword(item):
+    """「〇〇をフォロー」に出す語。話題辞書に当たればその表示名、なければ代表キーワード。"""
+    tps = topics_of(item)
+    return tps[0] if tps else extract_keyword(item.get('title_ja') or item.get('title'))
 
 
 # ── 重要な理由ラベル ─────────────────────────────────────────────────────

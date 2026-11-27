@@ -38,6 +38,23 @@ class Keyword(unittest.TestCase):
         self.assertEqual(cu.extract_keyword('東京電力、データセンター向け送電網を増強'), 'データセンター')
 
 
+class FollowTopics(unittest.TestCase):
+    def test_follow_uses_broad_topic_not_one_off_name(self):
+        self.assertEqual(cu.follow_keyword({'title': 'マイナアプリに複数の脆弱性、最新版に更新を'}), 'マイナンバー')
+        self.assertEqual(cu.follow_keyword({'title': 'Cloud Run で新機能が一般提供に'}), 'Google Cloud')
+        self.assertEqual(cu.follow_keyword({'title': 'Claude Duet、日本でも利用可能に'}), 'Claude')
+        x = {'title': '東京都「赤ちゃんファースト」で交換したQUOカードPayが使えなくなった件',
+             'summary': 'リンベル公式オンラインストアで不正アクセス'}
+        self.assertEqual(cu.follow_keyword(x), '情報漏えい')
+
+    def test_topics_include_aliases_in_priority_order(self):
+        self.assertEqual(cu.topics_of({'title': 'マイナアプリに複数の脆弱性'}), ['マイナンバー', '脆弱性'])
+        self.assertEqual(cu.topics_of({'title': 'Lambda の料金改定'}), ['AWS', '料金改定'])
+
+    def test_fallback_to_keyword(self):
+        self.assertEqual(cu.follow_keyword({'title': '東京電力、データセンター向け送電網を増強'}), 'データセンター')
+
+
 class ReasonLabels(unittest.TestCase):
     def test_text_rules_and_order(self):
         x = it('ランサムウェア攻撃で個人情報が流出', bd={'impact': 1.0, 'urgency': 1.0, 'novelty': 1.0, 'noise': 0})
@@ -149,6 +166,8 @@ class PageRendering(unittest.TestCase):
         self.assertIn('ページの変化', html)
         self.assertIn('同じ話題 1件', html)
         self.assertIn('本文から要約', html)
+        self.assertIn('「情報漏えい」をフォロー', html)
+        self.assertIn('class="addf', html)            # 設定からキーワードを直接フォローできる
         self.assertIn('<s>$3</s>', html)
         self.assertIn('情報漏えい発生', html)       # 理由ラベルは一覧に常に表示(マウスオーバー不要)
         self.assertIn('重要な理由:', html)
@@ -165,6 +184,8 @@ class PageRendering(unittest.TestCase):
         lead = next(x for x in data['items'] if x['id'] == a['id'])
         self.assertEqual(lead['rel'][0][3], b['id'])   # 代表を開くと関連記事も既読にする
         self.assertNotIn('</', m.group(1))
+        self.assertIn('情報漏えい', lead['tp'])          # フォローは話題(別名込み)でも一致させる
+        self.assertEqual(lead['fk'], '情報漏えい')
 
     def test_cookie_attributes(self):
         self.assertIn("SameSite=Lax", render.BODY_JS)
