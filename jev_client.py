@@ -197,12 +197,15 @@ def compose(answers, category, profile='importance'):
 
 
 def build_state(item):
-    return {
+    state = {
         'title': item.get('title', ''),
         'summary': (item.get('summary') or '')[:300],
         'source': item.get('source', ''),
         'published': item['published'].isoformat() if item.get('published') else None,
     }
+    if item.get('body_excerpt'):  # RSS に概要がなく、Treg で本文を取得できた記事(enrich.fetch_bodies)
+        state['body'] = item['body_excerpt'][:800]
+    return state
 
 
 # ── API 呼び出し ──────────────────────────────────────────────────────────────

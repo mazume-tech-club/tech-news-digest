@@ -39,6 +39,27 @@ for i, feed in enumerate(cfg.get('feeds', []), 1):
         errors.append(f'{label}: name が {seen_name[feed["name"]]} と重複しています')
     seen_name[feed.get('name')] = label
 
+# watches:(ページの変化)
+WATCH_KINDS = ('status', 'price', 'terms', 'news')
+watches = cfg.get('watches') or []
+if not isinstance(watches, list):
+    errors.append('watches はリストで書いてください')
+    watches = []
+for i, w in enumerate(watches, 1):
+    label = f"watches #{i} {w.get('name', '?')}"
+    for k in ('name', 'url', 'kind'):
+        if not w.get(k):
+            errors.append(f'{label}: 必須項目 {k} がありません')
+    if w.get('kind') and w['kind'] not in WATCH_KINDS:
+        errors.append(f"{label}: kind は {' / '.join(WATCH_KINDS)} のどれか")
+    if urlparse(w.get('url', '')).scheme != 'https':
+        errors.append(f'{label}: URL は https のみ')
+    if w.get('url') in seen_url:
+        errors.append(f"{label}: URL が {seen_url[w['url']]} と重複しています")
+    seen_url[w.get('url')] = label
+if sum(1 for w in watches if w.get('enabled', True)) > 10:
+    warnings.append('watches が 10 件を超えています。Treg の 1 日の予算(約 $0.0065)を圧迫します')
+
 if not errors:
     for feed in cfg['feeds']:
         if feed.get('enabled', True) is False:

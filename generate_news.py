@@ -24,8 +24,11 @@ import feedparser
 import requests
 import yaml
 
+from curation import article_id, cap_top_level, cluster_items
+from enrich import check_watches, fetch_bodies
 from jev_client import score_items
 from render import build_html, build_archive_index
+from treg_client import TregClient
 
 UA = 'Mozilla/5.0 (compatible; TechNewsDigest/3.0; +https://github.com/mazume-tech-club/tech-news-digest)'
 JST = timezone(timedelta(hours=9))
@@ -42,6 +45,13 @@ def load_config(path=FEEDS_FILE):
     settings = {'lookback_hours': 72, 'max_items_per_feed': 10, 'show_per_category': 20}
     settings.update(cfg.get('settings') or {})
     return settings, cfg['categories'], [f for f in cfg['feeds'] if f.get('enabled', True)]
+
+
+def load_watches(path=FEEDS_FILE):
+    """feeds.yml の watches:(RSS のないページの変更監視)。name, url, kind: status|price|terms|news"""
+    with open(path, encoding='utf-8') as f:
+        cfg = yaml.safe_load(f)
+    return [w for w in (cfg.get('watches') or []) if w.get('enabled', True)]
 
 
 # ── Fetch ─────────────────────────────────────────────────────────────────────
@@ -177,6 +187,33 @@ def existing_archive_dates(prev_dir):
     return dates
 
 
+# ── 初めて収集した時刻(「前回以降の新着」の判定用) ────────────────────────────
+
+def mark_first_seen(items, path_in, path_out, keep_days=10):
+    """記事ごとに初めて収集した時刻を item['first_seen'] に付ける(data/first-seen.json に記事ID単位で保存)。
+    公開日時が古い記事を後から収集しても、「すべて既読」の後の新着として扱えるようにするため。"""
+    import json
+    now = datetime.now(timezone.utc)
+    try:
+        with open(path_in, encoding='utf-8') as f:
+            seen = json.load(f)
+        if not isinstance(seen, dict):
+            seen = {}
+    except (OSError, ValueError):
+        seen = {}
+    for it in items:
+        ts = seen.get(it['id'])
+        if ts is None:
+            ts = int(now.timestamp())
+            seen[it['id']] = ts
+        it['first_seen'] = datetime.fromtimestamp(ts, tz=timezone.utc)
+    cutoff = int((now - timedelta(days=keep_days)).timestamp())
+    seen = {k: v for k, v in seen.items() if isinstance(v, int) and v >= cutoff}
+    os.makedirs(os.path.dirname(path_out), exist_ok=True)
+    with open(path_out, 'w', encoding='utf-8') as f:
+        json.dump(seen, f, separators=(',', ':'))
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
@@ -206,10 +243,27 @@ def main():
     print('\n[2/4] タイトル翻訳')
     translate_titles(items)
 
-    print('\n[3/4] 重要度判定')
     prev = os.environ.get('PREV_PAGES_DIR', '_pages')
+    print('\n[2.5/4] Treg(ページの変化・本文の取得)')
+    treg = TregClient()
+    if not treg.enabled:
+        print(f'  {treg.reason_disabled()} → ページの変化・本文の要約なしで続行')
+    changes = check_watches(load_watches(), treg,
+                            snap_in=os.path.join(prev, 'data', 'watch-snapshots.json'),
+                            snap_out=os.path.join('dist', 'data', 'watch-snapshots.json'))
+    fetch_bodies(items, treg, cache_in=os.path.join(prev, 'data', 'body-cache.json'),
+                 cache_out=os.path.join('dist', 'data', 'body-cache.json'))
+    print(f'  {treg.summary()}')
+
+    print('\n[3/4] 重要度判定')
     score_items(items, cache_in=os.path.join(prev, 'data', 'jev-cache.json'),
                 cache_out=os.path.join('dist', 'data', 'jev-cache.json'))
+    for it in items:
+        it['id'] = article_id(it['url'])
+    mark_first_seen(items, os.path.join(prev, 'data', 'first-seen.json'), os.path.join('dist', 'data', 'first-seen.json'))
+    n_topics = cluster_items(items)
+    n5 = cap_top_level(items, max_n=int(settings.get('max_top_level', 5)))
+    print(f'  → 同じ話題 {n_topics}組を束ねた / Lv5 {n5}件(上位のみ)')
 
     print('\n[4/4] HTML生成')
     now = datetime.now(JST)
@@ -221,7 +275,7 @@ def main():
     # アイコン・manifest 一式(assets/ 配下)をサイトのルートへコピー
     shutil.copytree(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets'), dist, dirs_exist_ok=True)
 
-    page = build_html(items, categories, settings, f'{pages_url}/archive/')
+    page = build_html(items, categories, settings, f'{pages_url}/archive/', changes=changes, now=now)
     for path in (os.path.join(dist, 'index.html'), os.path.join(dated_dir, f'{date_file}.html')):
         with open(path, 'w', encoding='utf-8') as f:
             f.write(page)
@@ -233,6 +287,7 @@ def main():
     summary = os.environ.get('GITHUB_STEP_SUMMARY')
     if summary:
         with open(summary, 'a', encoding='utf-8') as f:
+            f.write(f'### {treg.summary()}\n\n')
             f.write(f'### RSS収集結果: {len(items)}件 / 失敗 {len(failed)}件\n\n')
             for name, n, err in failed:
                 f.write(f'- ❌ {name}: {err}\n')
