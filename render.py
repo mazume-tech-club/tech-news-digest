@@ -18,7 +18,7 @@ import json
 from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse
 
-from curation import article_id, extract_keyword, reason_labels, why_text
+from curation import article_id, extract_keyword, follow_keyword, reason_labels, topics_of, why_text
 
 JST = timezone(timedelta(hours=9))
 EPOCH = datetime.min.replace(tzinfo=timezone.utc)
@@ -168,6 +168,13 @@ details.more summary{cursor:pointer;min-height:44px;display:flex;align-items:cen
 }
 .app-head{padding:16px 16px 8px;display:flex;align-items:flex-end;justify-content:space-between;gap:8px}
 .app-head p{margin:0;font-size:.75rem;color:var(--tx-mute)}
+.head-btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.pill.sub{color:var(--tx);font-weight:400}
+.pill.sub[aria-pressed="true"]{background:var(--tx);color:var(--bg);font-weight:700}
+.done .pill{margin-top:16px}
+.addf{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.addf input{flex:1 1 160px;min-width:0;min-height:44px;padding:8px 12px;font:inherit;font-size:.875rem;border:1px solid var(--line-strong);border-radius:8px;background:var(--bg);color:var(--tx)}
+.addf button{min-height:44px;padding:6px 14px;border:1px solid var(--new);border-radius:8px;background:var(--bg);color:var(--new);font-weight:700;font-size:.875rem}
 .app-head h1{margin:0;font-size:1.75rem;line-height:1.25;font-weight:800}
 .pill{min-height:44px;padding:6px 12px;border:0;border-radius:22px;background:var(--bg-sub);color:var(--link);font-size:.8125rem;font-weight:700}
 .chips{display:flex;gap:6px;overflow-x:auto;padding:4px 16px 10px;scrollbar-width:none;position:sticky;top:0;z-index:5;background:var(--bg)}
@@ -256,7 +263,9 @@ var follows=getList('tnd_follow'),muteS=getList('tnd_mute_src'),muteK=getList('t
 /* ── 判定 ───────────────────────────────────────────────── */
 var BY={};D.items.forEach(function(it){BY[it.id]=it});
 function muted(it){if(muteS.indexOf(it.s)>-1)return true;for(var i=0;i<muteK.length;i++){if(it.x.indexOf(muteK[i].toLowerCase())>-1)return true}return false}
-function followHit(it){for(var i=0;i<follows.length;i++){if(it.x.indexOf(follows[i].toLowerCase())>-1)return follows[i]}return ''}
+// フォロー: 話題(別名を含む。例: 「マイナンバー」は「マイナアプリ」にも一致)または、タイトル・ソースの部分一致
+function followHit(it){for(var i=0;i<follows.length;i++){var f=follows[i],fl=f.toLowerCase();
+  if((it.tp||[]).some(function(t){return t.toLowerCase()===fl})||it.x.indexOf(fl)>-1)return f}return ''}
 var keep={};   // この表示中に既読にした記事は、切り替えるまで一覧に残す(突然消えないように)
 var unreadOnly=true,live=$('#status');
 function say(t){if(live){live.textContent=t}}
@@ -272,9 +281,13 @@ function setTheme(dark){var n=dark?'dark':'light';de.setAttribute('data-theme',n
 function op(kind,it){
   if(kind==='mute-src'){if(muteS.indexOf(it.s)<0)muteS.push(it.s);setList('tnd_mute_src',muteS);say('「'+it.s+'」を表示しないようにしました。設定から解除できます。')}
   else if(kind==='mute-kw'){if(muteK.indexOf(it.kw)<0)muteK.push(it.kw);setList('tnd_mute_kw',muteK);say('「'+it.kw+'」を含む記事を表示しないようにしました。設定から解除できます。')}
-  else if(kind==='follow-kw'){if(follows.indexOf(it.kw)<0)follows.push(it.kw);setList('tnd_follow',follows);say('「'+it.kw+'」をフォローしました。')}
+  else if(kind==='follow-kw'){addFollow(it.fk)}
   render();
 }
+function addFollow(k){k=String(k||'').trim().slice(0,40);if(!k)return;
+  if(!follows.some(function(x){return x.toLowerCase()===k.toLowerCase()})){follows.push(k);setList('tnd_follow',follows)}
+  say('「'+k+'」をフォローしました。同じ話題の記事が「フォロー中」に出ます。')}
+document.addEventListener('submit',function(e){var f=e.target.closest('.addf');if(!f)return;e.preventDefault();var i=$('input',f);addFollow(i.value);i.value='';render()});
 function unfollow(k){follows=follows.filter(function(x){return x!==k});setList('tnd_follow',follows);render()}
 function unmuteS(k){muteS=muteS.filter(function(x){return x!==k});setList('tnd_mute_src',muteS);render()}
 function unmuteK(k){muteK=muteK.filter(function(x){return x!==k});setList('tnd_mute_kw',muteK);render()}
@@ -282,7 +295,7 @@ function chipsHTML(){
   var f=follows.map(function(k){return '<button type="button" class="chipx fol" data-unfollow="'+h(k)+'" aria-label="'+h(k)+' のフォローを外す">'+h(k)+' ×</button>'}).join('');
   var m=muteS.map(function(k){return '<button type="button" class="chipx mut" data-unmute-s="'+h(k)+'" aria-label="'+h(k)+' の非表示を解除">ソース: '+h(k)+' ×</button>'}).join('')
        +muteK.map(function(k){return '<button type="button" class="chipx mut" data-unmute-k="'+h(k)+'" aria-label="'+h(k)+' の非表示を解除">キーワード: '+h(k)+' ×</button>'}).join('');
-  return {f:f||'<span class="none-note">なし(記事の詳細の「フォロー」から追加できます)</span>',m:m||'<span class="none-note">なし(記事の詳細の「見ない」から追加できます)</span>'};
+  return {f:(f||'<span class="none-note">なし(記事の詳細の「フォロー」か、下の欄から追加できます)</span>'),m:m||'<span class="none-note">なし(記事の詳細の「見ない」から追加できます)</span>'};
 }
 document.addEventListener('click',function(e){
   var b=e.target.closest('[data-unfollow],[data-unmute-s],[data-unmute-k]');if(!b)return;
@@ -330,8 +343,9 @@ $('#read-all').addEventListener('click',function(){readAll();say('すべて既�
 $('#theme').addEventListener('click',function(){setTheme(!isDark())});
 $('#settings-btn').addEventListener('click',function(){var p=$('#settings'),o=p.hidden;p.hidden=!o;this.setAttribute('aria-expanded',o)});
 
+var ADDF='<form class="addf"><label class="vh" for="addf-m">フォローするキーワード</label><input id="addf-m" type="text" maxlength="40" placeholder="キーワードを追加(例: Rust、AWS)" autocomplete="off"><button type="submit">フォロー</button></form>';
 /* ── スマホ(アプリ風)──────────────────────────────────── */
-var app=$('#app'),tab='new',cat='all',sel=null,lastFocus=null;
+var app=$('#app'),tab='new',cat='all',sel=null,lastFocus=null,showRead=false;
 var ICON={new:'M4 4h16v12H15l-3 3-3-3H4z',pick:'M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.5 6.7 19.4l1.2-6L3.4 9.3l6-.7z',follow:'M6 3h12v18l-6-4-6 4z',settings:'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM3 12h2M19 12h2M12 3v2M12 19v2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4'};
 var TABS=[['new','新着'],['pick','注目'],['follow','フォロー'],['settings','設定']];
 function lvPill(it){return '<span class="lv lv'+it.lv+'" aria-label="'+(it.heat?'アツさ ':'重要レベル ')+it.lv+'(5段階)">'+(it.heat?'アツさ':'Lv')+it.lv+'</span>'}
@@ -339,14 +353,15 @@ function rsHTML(it){return it.rs.map(function(r){return '<span class="rs '+r[1]+
 function renderApp(){
   var vis=D.items.filter(function(it){return it.lead&&!muted(it)});
   var unread=vis.filter(function(it){return !isRead(it)});
-  var base=tab==='new'?vis.filter(function(it){return !isRead(it)||keep[it.id]}):tab==='pick'?vis.filter(function(it){return it.lv>=4&&!it.heat}):tab==='follow'?vis.filter(followHit):[];
-  base.sort(function(a,b){return (b.lv-a.lv)||(b.sc-a.sc)||(b.ts-a.ts)});
+  var base=tab==='new'?(showRead?vis.slice():vis.filter(function(it){return !isRead(it)||keep[it.id]})):tab==='pick'?vis.filter(function(it){return it.lv>=4&&!it.heat}):tab==='follow'?vis.filter(followHit):[];
+  base.sort(function(a,b){return (tab==='new'&&showRead?(isRead(a)-isRead(b)):0)||(b.lv-a.lv)||(b.sc-a.sc)||(b.ts-a.ts)});
   var cats=[['all','すべて']].concat(D.cats.filter(function(c){return base.some(function(it){return it.c===c[0]})}));
   if(!cats.some(function(c){return c[0]===cat}))cat='all';
   var list=cat==='all'?base:base.filter(function(it){return it.c===cat});
   var title={new:'新着 '+unread.length+'件',pick:'注目',follow:'フォロー中',settings:'設定'}[tab];
   var s='<header class="app-head"><div><p>'+h(D.updated)+' 更新</p><h1 id="app-title">'+h(title)+'</h1></div>'
-    +(tab==='new'&&unread.length?'<button type="button" class="pill" id="m-readall">すべて既読</button>':'')+'</header>';
+    +(tab==='new'?'<div class="head-btns">'+(unread.length?'<button type="button" class="pill" id="m-readall">すべて既読</button>':'')
+      +'<button type="button" class="pill sub" id="m-showread" aria-pressed="'+showRead+'">'+(showRead?'未読だけ':'既読も表示')+'</button></div>':'')+'</header>';
   if(tab!=='settings'){
     s+='<div class="chips" role="group" aria-label="絞り込み">'+cats.map(function(c){var n=c[0]==='all'?base.length:base.filter(function(it){return it.c===c[0]}).length;
       return '<button type="button" data-cat="'+h(c[0])+'" aria-pressed="'+(cat===c[0])+'">'+h(c[1])+'<span class="n">'+n+'</span></button>'}).join('')+'</div>';
@@ -355,13 +370,14 @@ function renderApp(){
         +'<span class="ct">'+h(it.t)+'</span><span class="cm"><span>'+h(it.s)+'</span><span>'+h(it.tm)+'</span>'
         +(it.rel&&it.rel.length?'<span>同じ話題 '+it.rel.length+'件</span>':'')+(it.likes!=null?'<span>いいね '+it.likes+'</span>':'')
         +(fh?'<span class="fol-hit">フォロー: '+h(fh)+'</span>':'')+'</span></button></li>'}).join('')+'</ul>';
-    if(!list.length){s+=tab==='new'?'<div class="done"><b>新着はすべて読みました</b>'+h(D.next)+'</div>'
+    if(!list.length){s+=tab==='new'?'<div class="done"><b>新着はすべて読みました</b>'+h(D.next)
+        +'<p><button type="button" class="pill" id="m-showread2">読んだ記事も表示する</button></p></div>'
       :tab==='follow'&&!follows.length?'<div class="done"><b>フォロー中のキーワードはありません</b>記事の詳細から「フォロー」できます。</div>'
       :'<div class="done"><b>該当する記事はありません</b></div>'}
     s+='</main>';
   }else{
     var c=chipsHTML();
-    s+='<main class="app-main"><div class="app-set"><section><h2>フォロー中</h2><div class="grp" style="display:flex;flex-wrap:wrap;gap:6px">'+c.f+'</div></section>'
+    s+='<main class="app-main"><div class="app-set"><section><h2>フォロー中</h2><div class="grp" style="display:flex;flex-wrap:wrap;gap:6px">'+c.f+'</div>'+ADDF+'</section>'
       +'<section><h2>見たくない</h2><div style="display:flex;flex-wrap:wrap;gap:6px">'+c.m+'</div></section>'
       +'<section style="padding:4px 14px"><label>ダーク表示<input type="checkbox" id="m-dark"'+(isDark()?' checked':'')+'></label></section>'
       +'<p class="note">設定と既読はこの端末のCookieに保存されます(既読は直近7日分)。ログインは不要です。ブラウザの共有メニューから「ホーム画面に追加」すると、アプリとして全画面で開けます。</p>'
@@ -379,7 +395,7 @@ function renderApp(){
       +(it.b!=null?'<div class="diff" style="font-size:.8125rem"><div class="bf"><b>変更前</b> <s>'+h(it.b)+'</s></div><div class="af"><b>変更後</b> '+h(it.a)+'</div></div>':'')
       +(it.rel&&it.rel.length?'<div class="rel-w" style="font-size:.8125rem"><b>同じ話題の記事</b><ul class="rel">'+it.rel.map(function(r){return '<li><a href="'+h(r[2])+'" target="_blank" rel="noopener noreferrer">'+h(r[0])+'</a>('+h(r[1])+')</li>'}).join('')+'</ul></div>':'')
       +'<a class="open-it" href="'+h(it.u)+'" target="_blank" rel="noopener noreferrer" data-open>記事を開く</a>'
-      +'<div class="ops3"><button type="button" data-mop="mute-src">このソースを<br>見ない</button><button type="button" data-mop="mute-kw">「'+h(it.kw)+'」を<br>見ない</button><button type="button" class="fo" data-mop="follow-kw">「'+h(it.kw)+'」を<br>フォロー</button></div>'
+      +'<div class="ops3"><button type="button" data-mop="mute-src">このソースを<br>見ない</button><button type="button" data-mop="mute-kw">「'+h(it.kw)+'」を<br>見ない</button><button type="button" class="fo" data-mop="follow-kw">「'+h(it.fk)+'」を<br>フォロー</button></div>'
       +'</section></div>';
   }
   var y=window.scrollY;app.innerHTML=s;window.scrollTo(0,y);
@@ -392,6 +408,7 @@ app.addEventListener('click',function(e){
   if((t=e.target.closest('[data-cat]'))){cat=t.dataset.cat;render();return}
   if((t=e.target.closest('.card'))){lastFocus=t;sel=t.dataset.id;render();return}
   if(e.target.closest('#m-readall')){readAll();return}
+  if(e.target.closest('#m-showread,#m-showread2')){showRead=!showRead;keep={};render();return}
   if(e.target.closest('[data-close]')){closeSheet(false);return}
   if(e.target.closest('[data-open]')){setTimeout(function(){closeSheet(true)},0);return}
   if((t=e.target.closest('[data-mop]'))){var it=BY[sel];var k=t.dataset.mop;
@@ -491,6 +508,7 @@ def row_html(it, sec, now):
     """1 件 = 2 段。詳細は開いたときだけ(JS 無効時は常に表示)。"""
     aid = _id(it)
     kw = it.get('kw') or extract_keyword(_title(it))
+    fk = it.get('fk') or follow_keyword(it)
     rel = it.get('related') or []
     pub = it.get('published')
     time_html = f'<time datetime="{pub.isoformat()}">{fmt_time(pub)}</time>' if pub else ''
@@ -513,7 +531,7 @@ def row_html(it, sec, now):
     detail.append('<div class="ops js-only flex">'
                   f'<button type="button" data-op="mute-src">「{esc(it.get("source"))}」を見ない</button>'
                   f'<button type="button" data-op="mute-kw">「{esc(kw)}」を見ない</button>'
-                  f'<button type="button" class="fo" data-op="follow-kw">「{esc(kw)}」をフォロー</button></div>')
+                  f'<button type="button" class="fo" data-op="follow-kw">「{esc(fk)}」をフォロー</button></div>')
     did = f'd-{sec}-{aid}'
     return (f'<li class="row unread" data-id="{aid}">'
             f'<div class="row-main"><span class="dot" role="img" aria-label="未読"></span><div class="row-body">'
@@ -608,6 +626,7 @@ def page_data(leaders, followers, categories, now, archive_link, base_path):
                    else [[r['t'], r['tone']] for r in reason_labels(it)]),
             't': _title(it), 'u': it['url'], 's': it.get('source', ''), 'tm': fmt_time(it.get('published'), now, short=True),
             'ts': _ts(it, now), 'c': it.get('category'), 'kw': it.get('kw') or extract_keyword(_title(it)),
+            'fk': it.get('fk') or follow_keyword(it), 'tp': topics_of(it),
             'w': why_text(it), 'x': _match_text(it),
         }
         if it.get('kind') == 'change':
@@ -633,6 +652,7 @@ def build_html(items, categories, settings, archive_link, changes=None, now=None
     for it in items + changes:
         it.setdefault('id', article_id(it['url']))
         it.setdefault('kw', extract_keyword(_title(it)))
+        it.setdefault('fk', follow_keyword(it))
     leaders = [i for i in items if not i.get('cluster_of')]
     followers = [i for i in items if i.get('cluster_of')]
     by_cat = {c['id']: [] for c in categories}
@@ -665,6 +685,7 @@ def build_html(items, categories, settings, archive_link, changes=None, now=None
 <div class="wrap">
   <section class="settings" id="settings" aria-label="表示設定" hidden>
     <div class="grp"><b>フォロー中</b><span id="set-follow" style="display:contents"></span></div>
+    <form class="addf grp"><label for="addf-pc" style="min-width:96px;font-weight:700">キーワードを追加</label><input id="addf-pc" type="text" maxlength="40" placeholder="例: Rust、AWS、脆弱性" autocomplete="off"><button type="submit">フォロー</button></form>
     <div class="grp"><b>見たくない</b><span id="set-mute" style="display:contents"></span></div>
     <p class="note">設定と既読はこのブラウザのCookieに保存されます(既読は直近7日分)。ログインは不要です。</p>
   </section>
