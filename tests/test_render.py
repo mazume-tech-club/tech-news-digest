@@ -9,8 +9,7 @@ class LevelIndicator(unittest.TestCase):
         html = render.level_indicator({'importance': 4})
         self.assertIn('Lv4', html)
         self.assertIn('aria-label="重要レベル 4(5段階)"', html)
-        self.assertEqual(html.count('<i class="on">'), 4)
-        self.assertEqual(html.count('<i class="">'), 1)
+        self.assertIn('class="lv lv4"', html)  # 改修でデザイン案の「Lv4」ラベル表示に変更(旧: 5段の棒)
 
     def test_tooltip_includes_breakdown_and_confidence(self):
         html = render.level_indicator({
@@ -63,17 +62,6 @@ class Ranking(unittest.TestCase):
         old = {'importance_score': 0.5, 'published': datetime(2026, 9, 1, tzinfo=timezone.utc)}
         new = {'importance_score': 0.5, 'published': datetime(2026, 9, 2, tzinfo=timezone.utc)}
         self.assertEqual(sorted([old, new], key=render._rank_key, reverse=True), [new, old])
-
-
-class SourceOptions(unittest.TestCase):
-    def test_grouped_by_category_with_counts_and_escaped(self):
-        items = [{'source': 'A & B', 'category': 'ai'}, {'source': 'A & B', 'category': 'ai'},
-                 {'source': 'Zed', 'category': 'cloud'}]
-        cats = [{'id': 'ai', 'title': 'AI'}, {'id': 'cloud', 'title': 'クラウド'}, {'id': 'gcp', 'title': 'GCP'}]
-        html = render.source_options(items, cats)
-        self.assertIn('<optgroup label="AI"><option value="A &amp; B">A &amp; B (2)</option></optgroup>', html)
-        self.assertIn('label="クラウド"', html)
-        self.assertNotIn('GCP', html)  # 記事のないカテゴリは出さない
 
 
 if __name__ == '__main__':

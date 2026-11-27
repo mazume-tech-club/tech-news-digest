@@ -8,6 +8,9 @@ on:
       - 'jev_client.py'
       - 'generate_news.py'
       - 'render.py'
+      - 'treg_client.py'
+      - 'enrich.py'
+      - 'curation.py'
       - 'tests/**'
 
 permissions:

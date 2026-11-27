@@ -13,6 +13,9 @@ on:
       - 'requirements.txt'
       - '.github/workflows/daily-news.yml'
       - 'render.py'
+      - 'treg_client.py'
+      - 'enrich.py'
+      - 'curation.py'
       - 'assets/**'
 
 # gh-pages への push のみ許可(それ以外は読み取り専用)
@@ -59,13 +62,17 @@ jobs:
           JEV_API_KEY: ${{ secrets.JEV_API_KEY }}
           # Qiita のいいね数取得用トークン(任意。未設定でも動くがレート制限が厳しい)
           QIITA_TOKEN: ${{ secrets.QIITA_TOKEN }}
+          # Treg(本文の取得・ページの変化)。どちらか未設定なら Treg なしで今まで通り生成する
+          TREG_API_KEY: ${{ secrets.TREG_API_KEY }}
+          TREG_API_URL: ${{ vars.TREG_API_URL }}
+          TREG_BUDGET_USD: '0.0065'   # 1 回の実行の上限(約1円)
         run: python generate_news.py
 
       - name: Verify output
         run: |
           test -s dist/index.html
           find dist -name "*.html" | sort
-          if grep -rE "JEV_API_KEY|ghp_|github_pat_" dist/; then
+          if grep -rE "JEV_API_KEY|TREG_API_KEY|ghp_|github_pat_" dist/; then
             echo "❌ Potential secret found in output"; exit 1
           fi
 

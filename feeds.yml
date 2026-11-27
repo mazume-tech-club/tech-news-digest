@@ -16,6 +16,7 @@ settings:
   lookback_hours: 168       # この時間より古い記事は除外(日付なしは含める)
   max_items_per_feed: 10
   show_per_category: 20     # カテゴリごとに最初から表示する件数(残りは折りたたみ)
+  max_top_level: 5          # Lv5 はその日のスコア上位この件数まで(相対評価。少なくとも 3 件)
 
 # 表示順 = この並び順
 #   id, title(必須)
@@ -132,3 +133,17 @@ feeds:
   - { name: Nishio Hirokazu,          url: "https://nishio.hateblo.jp/rss",                            category: person }
   - { name: kazuho,                   url: "https://blog.kazuhooku.com/feeds/posts/default",           category: person, enabled: false }  # TLS接続に失敗(2026-09時点)
   - { name: Simon Willison,           url: "https://simonwillison.net/atom/everything/",               category: person, lang: en }
+
+# ── ページの変化(RSS のないページの変更監視)──────────────────────────────
+# 毎日 1 回ページを取得し(Treg 経由・1 ページ約 $0.00015)、前回のテキストとの差分を「ページの変化」に表示する。
+# TREG_API_KEY / TREG_API_URL が未設定のときは監視しない(サイトは今まで通り生成される)。
+#   name : 表示名(必須)
+#   url  : 監視するページ(必須・https)
+#   kind : status(障害) / price(料金) / terms(規約) / news(発表) のどれか(必須)
+#   enabled: false で監視停止
+# 1 日の Treg 予算(約 $0.0065)は本文取得と共有するため、監視は 10 ページ程度までにしてください。
+watches:
+  - { name: GitHub Status,        url: "https://www.githubstatus.com/",                         kind: status }
+  - { name: OpenAI API 料金,      url: "https://openai.com/api/pricing/",                       kind: price }
+  - { name: GitHub 利用規約,      url: "https://docs.github.com/ja/site-policy/github-terms/github-terms-of-service", kind: terms }
+  - { name: Anthropic News,       url: "https://www.anthropic.com/news",                        kind: news }   # 公式RSSがない
