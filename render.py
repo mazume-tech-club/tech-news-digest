@@ -345,7 +345,7 @@ $('#settings-btn').addEventListener('click',function(){var p=$('#settings'),o=p.
 
 var ADDF='<form class="addf"><label class="vh" for="addf-m">フォローするキーワード</label><input id="addf-m" type="text" maxlength="40" placeholder="キーワードを追加(例: Rust、AWS)" autocomplete="off"><button type="submit">フォロー</button></form>';
 /* ── スマホ(アプリ風)──────────────────────────────────── */
-var app=$('#app'),tab='new',cat='all',sel=null,lastFocus=null,showRead=false;
+var app=$('#app'),tab='new',cat='all',sel=null,lastFocus=null,showRead=false,chipsReset=false;
 var ICON={new:'M4 4h16v12H15l-3 3-3-3H4z',pick:'M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.5 6.7 19.4l1.2-6L3.4 9.3l6-.7z',follow:'M6 3h12v18l-6-4-6 4z',settings:'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM3 12h2M19 12h2M12 3v2M12 19v2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4'};
 var TABS=[['new','新着'],['pick','注目'],['follow','フォロー'],['settings','設定']];
 function lvPill(it){return '<span class="lv lv'+it.lv+'" aria-label="'+(it.heat?'アツさ ':'重要レベル ')+it.lv+'(5段階)">'+(it.heat?'アツさ':'Lv')+it.lv+'</span>'}
@@ -398,13 +398,18 @@ function renderApp(){
       +'<div class="ops3"><button type="button" data-mop="mute-src">このソースを<br>見ない</button><button type="button" data-mop="mute-kw">「'+h(it.kw)+'」を<br>見ない</button><button type="button" class="fo" data-mop="follow-kw">「'+h(it.fk)+'」を<br>フォロー</button></div>'
       +'</section></div>';
   }
-  var y=window.scrollY;app.innerHTML=s;window.scrollTo(0,y);
+  // 描き直しでチップ列の横スクロールが左端に戻らないよう、位置を引き継ぐ(右側のカテゴリを選んでもその場に留まる)
+  var oc=$('.chips',app),sx=oc?oc.scrollLeft:0,y=window.scrollY;
+  app.innerHTML=s;window.scrollTo(0,y);
+  var nc=$('.chips',app);if(nc){nc.scrollLeft=chipsReset?0:sx;chipsReset=false;
+    var on=$('[aria-pressed="true"]',nc);if(on){var r=on.getBoundingClientRect(),w=nc.getBoundingClientRect();
+      if(r.left<w.left+16||r.right>w.right-16)nc.scrollLeft+=r.left-w.left-(w.width-r.width)/2}}
   var sh=$('.sheet section',app);if(sh)sh.focus({preventScroll:true});
 }
 function closeSheet(markIt){var id=sel;sel=null;if(markIt&&id){openArticle(BY[id])}render();var c=id&&$('.card[data-id="'+id+'"]',app);(c||lastFocus||document.body).focus&&(c||lastFocus).focus()}
 app.addEventListener('click',function(e){
   var t;
-  if((t=e.target.closest('[data-tab]'))){tab=t.dataset.tab;cat='all';keep={};render();window.scrollTo(0,0);return}
+  if((t=e.target.closest('[data-tab]'))){tab=t.dataset.tab;cat='all';keep={};chipsReset=true;render();window.scrollTo(0,0);return}
   if((t=e.target.closest('[data-cat]'))){cat=t.dataset.cat;render();return}
   if((t=e.target.closest('.card'))){lastFocus=t;sel=t.dataset.id;render();return}
   if(e.target.closest('#m-readall')){readAll();return}
